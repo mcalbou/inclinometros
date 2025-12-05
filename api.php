@@ -5,7 +5,7 @@ header('Content-Type: application/json');
 $host = 'localhost';
 $db   = 'inclinometros_db';
 $user = 'postgres';
-$pass = '1234'; // <--- PON TU CONTRASEÑA AQUÍ
+$pass = 'DatosBase1'; // <--- PON TU CONTRASEÑA AQUÍ
 $dsn  = "pgsql:host=$host;port=5432;dbname=$db";
 
 try {

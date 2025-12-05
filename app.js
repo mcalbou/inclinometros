@@ -204,6 +204,7 @@ function renderAllCharts() {
 
     const layoutProfile = (title) => ({
         title: title,
+        height: 900,
         yaxis: { title: 'Profundidad (m)', autorange: 'reversed' }, 
         xaxis: { title: 'Desplazamiento (mm)', range: [-30, 30] },
         shapes: [
