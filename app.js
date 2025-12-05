@@ -204,8 +204,9 @@ function renderAllCharts() {
 
     const layoutProfile = (title) => ({
         title: title,
+        height: 900,
         yaxis: { title: 'Profundidad (m)', autorange: 'reversed' }, 
-        xaxis: { title: 'Desplazamiento (mm)', range: [-30, 30] },
+        xaxis: { title: 'Desplazamiento (mm)', range: [-20, 20] },
         shapes: [
             { type: 'rect', x0: -20, x1: -10, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below' },
             { type: 'rect', x0: 10, x1: 20, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below' },
