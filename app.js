@@ -268,7 +268,7 @@ function renderAllCharts() {
     };
 
     const polarLayout = {
-        title: 'Desplazamiento Polar',
+        title: 'Desplazamiento Polar(mm)',
         polar: { 
             radialaxis: { range: [0, 20] },
             domain: { x: [0, 1], y: [0, 1] }
@@ -296,7 +296,7 @@ function renderAllCharts() {
         mode: 'markers',
         marker: { size: 3, color: COLOR_A },
         type: 'scatter3d',
-        showlegend: false
+        showlegend: true
     };
 
     Plotly.newPlot('chart3D', [trace3D], {
@@ -313,13 +313,26 @@ function renderAllCharts() {
 // --- UTILIDADES ---
 
 function initMap() {
-    // Coordenadas default (España aprox) si no hay sensor
-    map = L.map('map').setView([40.416, -3.703], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
-}
+    // Si ya existe mapa, no lo recreamos, solo lo limpiamos (prevención de errores)
+    if (map) { map.remove(); }
 
+    // Inicializar mapa centrado en España por defecto
+    map = L.map('map').setView([40.416, -3.703], 6);
+
+    // --- CORRECCIÓN: USAR MAPA SATÉLITE (ESRI) ---
+    // Es mucho más profesional para obras y suele fallar menos que el de calles
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        maxZoom: 19
+    }).addTo(map);
+
+    // --- TRUCO CLAVE: INVALIDATE SIZE ---
+    // Esto fuerza al mapa a recalcular su tamaño después de 0.5 segundos
+    // Soluciona el problema del "mapa gris" o que falten trozos
+    setTimeout(() => { 
+        map.invalidateSize(); 
+    }, 500);
+}
 async function handleUpload(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
