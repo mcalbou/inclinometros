@@ -228,7 +228,7 @@ function renderAllCharts() {
     Plotly.newPlot('chartB', makeProfileTrace('B'), layoutProfile('Eje B'));
 
     // 2. Serie Temporal (Fijando Profundidad)
-    const dataProf = data.filter(d => d.profundidad === profVal);
+    const dataProf = data.filter(d => parseFloat(d.profundidad) === profVal);
     
     const traceTimeA = {
         x: dataProf.map(d => d.fecha_str),
