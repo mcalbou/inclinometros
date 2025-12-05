@@ -1,0 +1,317 @@
+// Variables globales
+let currentData = [];
+let map = null;
+let mapMarker = null;
+let currentSensorInfo = null;
+
+const COLOR_A = "#1f77b4";
+const COLOR_B = "#ff7f0e";
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', () => {
+    loadSensors();
+    initMap();
+
+    // Listeners
+    document.getElementById('btnUpdate').addEventListener('click', (e) => {
+        e.preventDefault();
+        updateDashboard();
+    });
+
+    document.getElementById('uploadForm').addEventListener('submit', handleUpload);
+});
+
+// --- API CALLS ---
+
+async function loadSensors() {
+    try {
+        const res = await axios.get('api.php?action=get_sensors');
+        const sensores = res.data;
+        const sel = document.getElementById('sensorSelect');
+        
+        sel.innerHTML = '';
+        sensores.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.nombre;
+            // Guardar data en atributo para acceso rápido
+            opt.dataset.lat = s.latitud;
+            opt.dataset.lon = s.longitud;
+            opt.dataset.nf = s.nf;
+            opt.dataset.foto = s.foto_path;
+            sel.appendChild(opt);
+        });
+
+        if(sensores.length > 0) updateDashboard(); // Cargar el primero
+
+    } catch (err) {
+        console.error("Error cargando sensores", err);
+    }
+}
+
+async function updateDashboard() {
+    const sensorId = document.getElementById('sensorSelect').value;
+    if(!sensorId) return;
+
+    showLoading(true);
+
+    try {
+        // 1. Actualizar Info del Sensor
+        updateSensorInfo();
+
+        // 2. Descargar Datos
+        const res = await axios.get(`api.php?action=get_data&id=${sensorId}`);
+        currentData = res.data; // [{fecha_str, profundidad, valor_a, valor_b}, ...]
+
+        // 3. Configurar Fechas (si están vacías)
+        setupDates();
+
+        // 4. Llenar Select de Profundidades
+        setupDepths();
+
+        // 5. Renderizar Todo
+        renderAllCharts();
+
+    } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'No se pudieron cargar los datos', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// --- LOGICA DE DATOS ---
+
+function setupDates() {
+    if(currentData.length === 0) return;
+    
+    // Asumimos que vienen ordenados por fecha
+    const feMin = currentData[0].fecha_str;
+    const feMax = currentData[currentData.length - 1].fecha_str;
+
+    const inStart = document.getElementById('startDate');
+    const inEnd = document.getElementById('endDate');
+
+    if(!inStart.value) inStart.value = feMin;
+    if(!inEnd.value) inEnd.value = feMax;
+}
+
+function setupDepths() {
+    const profSel = document.getElementById('profSelect');
+    const oldVal = profSel.value;
+    
+    // Obtener profundidades únicas
+    const uniqueProfs = [...new Set(currentData.map(item => item.profundidad))].sort((a,b) => a - b);
+    
+    profSel.innerHTML = '';
+    uniqueProfs.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = p + ' m';
+        profSel.appendChild(opt);
+    });
+
+    if (oldVal && uniqueProfs.includes(parseFloat(oldVal))) {
+        profSel.value = oldVal;
+    }
+}
+
+function getFilteredData() {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    
+    if(!start || !end) return currentData;
+
+    return currentData.filter(d => d.fecha_str >= start && d.fecha_str <= end);
+}
+
+// --- RENDERIZADO ---
+
+function updateSensorInfo() {
+    const sel = document.getElementById('sensorSelect');
+    const opt = sel.options[sel.selectedIndex];
+    
+    if(!opt) return;
+
+    currentSensorInfo = {
+        lat: parseFloat(opt.dataset.lat),
+        lon: parseFloat(opt.dataset.lon),
+        nf: parseFloat(opt.dataset.nf),
+        foto: opt.dataset.foto
+    };
+
+    // UI Info
+    document.getElementById('sensorInfoBox').style.display = 'block';
+    document.getElementById('infoNombre').textContent = opt.text;
+    document.getElementById('infoCoords').textContent = `${currentSensorInfo.lat}, ${currentSensorInfo.lon}`;
+
+    // Mapa
+    if(map) {
+        map.setView([currentSensorInfo.lat, currentSensorInfo.lon], 18);
+        if(mapMarker) map.removeLayer(mapMarker);
+        mapMarker = L.circleMarker([currentSensorInfo.lat, currentSensorInfo.lon], {
+            radius: 10, color: 'blue', fillOpacity: 0.6
+        }).addTo(map);
+    }
+
+    // Foto
+    const img = document.getElementById('sensorPhoto');
+    const txt = document.getElementById('noPhotoText');
+    if(currentSensorInfo.foto && currentSensorInfo.foto !== 'null') {
+        img.src = `static/img/${currentSensorInfo.foto}`;
+        img.style.display = 'block';
+        txt.style.display = 'none';
+    } else {
+        img.style.display = 'none';
+        txt.style.display = 'block';
+    }
+}
+
+function renderAllCharts() {
+    const data = getFilteredData();
+    const profVal = parseFloat(document.getElementById('profSelect').value) || 0;
+
+    // Actualizar etiquetas UI
+    document.getElementById('txtProfTime').textContent = profVal;
+    document.getElementById('txtProfPolar').textContent = profVal;
+
+    // 1. Gráficos de Perfil (A y B)
+    // Necesitamos agrupar por fecha para crear series
+    const dates = [...new Set(data.map(d => d.fecha_str))];
+    
+    function makeProfileTrace(axis) {
+        const traces = [];
+        dates.forEach(date => {
+            const dateData = data.filter(d => d.fecha_str === date);
+            traces.push({
+                x: dateData.map(d => axis === 'A' ? d.valor_a : d.valor_b),
+                y: dateData.map(d => d.profundidad),
+                mode: 'lines',
+                name: date, // Muestra fecha en leyenda
+                line: { width: 1 }
+            });
+        });
+        return traces;
+    }
+
+    const layoutProfile = (title) => ({
+        title: title,
+        yaxis: { title: 'Profundidad (m)', autorange: 'reversed' }, // Invertir Y como en el original
+        xaxis: { title: 'Desplazamiento (mm)', range: [-30, 30] },
+        shapes: [
+            // Zona advertencia
+            { type: 'rect', x0: -20, x1: -10, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}},
+            { type: 'rect', x0: 10, x1: 20, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}},
+            // Nivel Freático (Línea azul)
+            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: currentSensorInfo.nf, y1: currentSensorInfo.nf, line: {color: 'blue', dash: 'dash', width: 2}}
+        ],
+        margin: {t: 40, b: 40, l: 50, r: 20}
+    });
+
+    Plotly.newPlot('chartA', makeProfileTrace('A'), layoutProfile('Eje A'));
+    Plotly.newPlot('chartB', makeProfileTrace('B'), layoutProfile('Eje B'));
+
+    // 2. Serie Temporal (Fijando Profundidad)
+    const dataProf = data.filter(d => d.profundidad === profVal);
+    
+    const traceTimeA = {
+        x: dataProf.map(d => d.fecha_str),
+        y: dataProf.map(d => d.valor_a),
+        name: 'Eje A', type: 'scatter', mode: 'lines+markers', marker: {color: COLOR_A}
+    };
+    const traceTimeB = {
+        x: dataProf.map(d => d.fecha_str),
+        y: dataProf.map(d => d.valor_b),
+        name: 'Eje B', type: 'scatter', mode: 'lines+markers', marker: {color: COLOR_B}
+    };
+
+    Plotly.newPlot('chartTime', [traceTimeA, traceTimeB], {
+        title: `Serie Temporal - ${profVal}m`,
+        yaxis: { title: 'Desplazamiento (mm)' }
+    });
+
+    // 3. Polar (Fijando Profundidad)
+    // Calculamos r y theta en cliente
+    const rVals = dataProf.map(d => Math.sqrt(d.valor_a**2 + d.valor_b**2));
+    const thetaVals = dataProf.map(d => Math.atan2(d.valor_b, d.valor_a) * (180/Math.PI));
+
+    const tracePolar = {
+        type: 'scatterpolar',
+        r: rVals,
+        theta: thetaVals,
+        mode: 'markers+lines',
+        marker: { color: COLOR_A, size: 6 },
+        name: 'Lectura'
+    };
+
+    // Umbrales Polar
+    const traceAmber = {
+        type: 'scatterpolar', r: new Array(360).fill(10), theta: Array.from({length:360}, (_,i)=>i),
+        mode: 'lines', line: {color: 'yellow'}, name: 'Umbral Ámbar', hoverinfo: 'skip'
+    };
+
+    Plotly.newPlot('chartPolar', [traceAmber, tracePolar], {
+        title: 'Desplazamiento Polar',
+        polar: { radialaxis: { range: [0, 20] } },
+        // Truco para imagen de fondo en Polar requiere layout images, más complejo en JS puro,
+        // pero se puede añadir si la imagen es estática.
+    });
+
+    // 4. Modelo 3D
+    const trace3D = {
+        x: data.map(d => d.valor_a),
+        y: data.map(d => d.valor_b),
+        z: data.map(d => d.profundidad),
+        mode: 'markers',
+        marker: { size: 3, color: COLOR_A },
+        type: 'scatter3d'
+    };
+
+    Plotly.newPlot('chart3D', [trace3D], {
+        title: 'Modelo 3D',
+        scene: {
+            xaxis: {title: 'Eje A', range: [-20, 20]},
+            yaxis: {title: 'Eje B', range: [-20, 20]},
+            zaxis: {title: 'Profundidad', autorange: 'reversed'}
+        },
+        height: 600
+    });
+}
+
+// --- UTILIDADES ---
+
+function initMap() {
+    // Coordenadas default (España aprox) si no hay sensor
+    map = L.map('map').setView([40.416, -3.703], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+}
+
+async function handleUpload(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    formData.append('sensor_id', document.getElementById('sensorSelect').value);
+
+    showLoading(true);
+    try {
+        const res = await axios.post('api.php?action=upload', formData, {
+            headers: {'Content-Type': 'multipart/form-data'}
+        });
+        
+        if(res.data.success) {
+            Swal.fire('Éxito', res.data.message, 'success');
+            updateDashboard(); // Refrescar datos
+        } else {
+            Swal.fire('Error', res.data.message, 'error');
+        }
+    } catch (err) {
+        Swal.fire('Error', 'Fallo en la subida', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function showLoading(show) {
+    document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+}
