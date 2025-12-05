@@ -176,9 +176,15 @@ function renderAllCharts() {
     document.getElementById('txtProfPolar').textContent = profVal;
 
     // 1. Gráficos de Perfil (A y B)
-    // Necesitamos agrupar por fecha para crear series
     const dates = [...new Set(data.map(d => d.fecha_str))];
     
+    // Función auxiliar para formatear fecha (opcional, para estética)
+    const formatDateES = (str) => {
+        if(!str) return str;
+        const [y, m, d] = str.split('-');
+        return `${d}/${m}/${y}`;
+    };
+
     function makeProfileTrace(axis) {
         const traces = [];
         dates.forEach(date => {
@@ -187,8 +193,10 @@ function renderAllCharts() {
                 x: dateData.map(d => axis === 'A' ? d.valor_a : d.valor_b),
                 y: dateData.map(d => d.profundidad),
                 mode: 'lines',
-                name: date, // Muestra fecha en leyenda
-                line: { width: 1 }
+                name: formatDateES(date), 
+                line: { width: 1.5 }, // Línea un poco más visible
+                showlegend: true,    // <--- CAMBIO CLAVE 1: Ocultamos la leyenda gigante
+                hovertemplate: `<b>${formatDateES(date)}</b><br>Prof: %{y:.1f}m<br>Desp: %{x:.2f}mm<extra></extra>` // Tooltip limpio
             });
         });
         return traces;
@@ -196,16 +204,23 @@ function renderAllCharts() {
 
     const layoutProfile = (title) => ({
         title: title,
-        yaxis: { title: 'Profundidad (m)', autorange: 'reversed' }, // Invertir Y como en el original
+        yaxis: { title: 'Profundidad (m)', autorange: 'reversed' }, 
         xaxis: { title: 'Desplazamiento (mm)', range: [-30, 30] },
         shapes: [
-            // Zona advertencia
-            { type: 'rect', x0: -20, x1: -10, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}},
-            { type: 'rect', x0: 10, x1: 20, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}},
-            // Nivel Freático (Línea azul)
-            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: currentSensorInfo.nf, y1: currentSensorInfo.nf, line: {color: 'blue', dash: 'dash', width: 2}}
+            { type: 'rect', x0: -20, x1: -10, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below' },
+            { type: 'rect', x0: 10, x1: 20, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below' },
+            { 
+                type: 'line', 
+                x0: 0, x1: 1, xref: 'paper', 
+                y0: currentSensorInfo.nf, y1: currentSensorInfo.nf, yref: 'y',
+                line: { color: 'blue', dash: 'dash', width: 2 }
+            }
         ],
-        margin: {t: 40, b: 40, l: 50, r: 20}
+        annotations: [
+            { x: 0.95, xref: 'paper', y: currentSensorInfo.nf, yref: 'y', text: 'NF', showarrow: false, font: {color: 'blue'} }
+        ],
+        margin: {t: 40, b: 40, l: 50, r: 20},
+        hovermode: 'closest' // <--- CAMBIO CLAVE 2: Solo muestra el dato que tocas
     });
 
     Plotly.newPlot('chartA', makeProfileTrace('A'), layoutProfile('Eje A'));
@@ -227,11 +242,11 @@ function renderAllCharts() {
 
     Plotly.newPlot('chartTime', [traceTimeA, traceTimeB], {
         title: `Serie Temporal - ${profVal}m`,
-        yaxis: { title: 'Desplazamiento (mm)' }
+        yaxis: { title: 'Desplazamiento (mm)' },
+        hovermode: 'closest'
     });
 
     // 3. Polar (Fijando Profundidad)
-    // Calculamos r y theta en cliente
     const rVals = dataProf.map(d => Math.sqrt(d.valor_a**2 + d.valor_b**2));
     const thetaVals = dataProf.map(d => Math.atan2(d.valor_b, d.valor_a) * (180/Math.PI));
 
@@ -241,21 +256,36 @@ function renderAllCharts() {
         theta: thetaVals,
         mode: 'markers+lines',
         marker: { color: COLOR_A, size: 6 },
-        name: 'Lectura'
+        name: 'Lectura',
+        showlegend: false // También ocultamos leyenda aquí si molesta
     };
 
-    // Umbrales Polar
     const traceAmber = {
         type: 'scatterpolar', r: new Array(360).fill(10), theta: Array.from({length:360}, (_,i)=>i),
-        mode: 'lines', line: {color: 'yellow'}, name: 'Umbral Ámbar', hoverinfo: 'skip'
+        mode: 'lines', line: {color: 'yellow'}, name: 'Umbral Ámbar', hoverinfo: 'skip',
+        showlegend: true // Esta sí la dejamos para saber qué es la línea amarilla
     };
 
-    Plotly.newPlot('chartPolar', [traceAmber, tracePolar], {
+    const polarLayout = {
         title: 'Desplazamiento Polar',
-        polar: { radialaxis: { range: [0, 20] } },
-        // Truco para imagen de fondo en Polar requiere layout images, más complejo en JS puro,
-        // pero se puede añadir si la imagen es estática.
-    });
+        polar: { 
+            radialaxis: { range: [0, 20] },
+            domain: { x: [0, 1], y: [0, 1] }
+        },
+        images: [
+            {
+                source: "static/img/Polar.png",
+                xref: "paper", yref: "paper",
+                x: 0.5, y: 0.5,
+                sizex: 1.1, sizey: 1.1,
+                xanchor: "center", yanchor: "middle",
+                layer: "below",
+                opacity: 0.5
+            }
+        ]
+    };
+
+    Plotly.newPlot('chartPolar', [traceAmber, tracePolar], polarLayout);
 
     // 4. Modelo 3D
     const trace3D = {
@@ -264,7 +294,8 @@ function renderAllCharts() {
         z: data.map(d => d.profundidad),
         mode: 'markers',
         marker: { size: 3, color: COLOR_A },
-        type: 'scatter3d'
+        type: 'scatter3d',
+        showlegend: false
     };
 
     Plotly.newPlot('chart3D', [trace3D], {
