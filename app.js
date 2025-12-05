@@ -258,7 +258,7 @@ function renderAllCharts() {
         mode: 'markers+lines',
         marker: { color: COLOR_A, size: 6 },
         name: 'Lectura',
-        showlegend: false // También ocultamos leyenda aquí si molesta
+        showlegend: true // También ocultamos leyenda aquí si molesta
     };
 
     const traceAmber = {
