@@ -302,33 +302,33 @@ function renderAllCharts() {
     Plotly.newPlot('chart3D', [trace3D], {
         title: 'Modelo 3D',
         scene: {
-            xaxis: {title: 'Eje A', range: [-20, 20]},
-            yaxis: {title: 'Eje B', range: [-20, 20]},
-            zaxis: {title: 'Profundidad', autorange: 'reversed'}
+            xaxis: {title: 'Eje A (mm)', range: [-20, 20]},
+            yaxis: {title: 'Eje B (mm)', range: [-20, 20]},
+            zaxis: {title: 'Profundidad (m)', autorange: 'reversed'}
         },
         height: 600
     });
 }
 
 // --- UTILIDADES ---
-
 function initMap() {
-    // Si ya existe mapa, no lo recreamos, solo lo limpiamos (prevención de errores)
+    // 1. Limpiar mapa previo si existe
     if (map) { map.remove(); }
 
-    // Inicializar mapa centrado en España por defecto
+    // 2. Crear mapa centrado
     map = L.map('map').setView([40.416, -3.703], 6);
 
-    // --- CORRECCIÓN: USAR MAPA SATÉLITE (ESRI) ---
-    // Es mucho más profesional para obras y suele fallar menos que el de calles
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-        maxZoom: 19
+    // 3. USAR GOOGLE HYBRID (Satélite + Nombres de calles)
+    // Este servidor es mucho más robusto que el de Esri
+    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
+        maxZoom: 20
     }).addTo(map);
 
-    // --- TRUCO CLAVE: INVALIDATE SIZE ---
-    // Esto fuerza al mapa a recalcular su tamaño después de 0.5 segundos
-    // Soluciona el problema del "mapa gris" o que falten trozos
+    // 4. Marcador (se moverá cuando cargues un sensor)
+    // No añadimos marcador aquí, lo añade la función updateSensorInfo
+    
+    // 5. RECALCULAR TAMAÑO (Truco para evitar el fondo gris)
     setTimeout(() => { 
         map.invalidateSize(); 
     }, 500);
