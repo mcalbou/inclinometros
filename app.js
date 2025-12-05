@@ -312,26 +312,25 @@ function renderAllCharts() {
 
 // --- UTILIDADES ---
 function initMap() {
-    // 1. Limpiar mapa previo si existe
-    if (map) { map.remove(); }
+    console.log("Iniciando mapa..."); // Mira si esto sale en la consola (F12)
 
-    // 2. Crear mapa centrado
+    // 1. Limpiar mapa previo
+    if (map) { map.remove(); map = null; }
+
+    // 2. Crear mapa
     map = L.map('map').setView([40.416, -3.703], 6);
 
-    // 3. USAR GOOGLE HYBRID (Satélite + Nombres de calles)
-    // Este servidor es mucho más robusto que el de Esri
-    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-        attribution: '© Google',
-        maxZoom: 20
+    // 3. USAR OPENSTREETMAP (El más compatible del mundo)
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // 4. Marcador (se moverá cuando cargues un sensor)
-    // No añadimos marcador aquí, lo añade la función updateSensorInfo
-    
-    // 5. RECALCULAR TAMAÑO (Truco para evitar el fondo gris)
+    // 4. FORZAR REAJUSTE
     setTimeout(() => { 
         map.invalidateSize(); 
-    }, 500);
+        console.log("Mapa reajustado");
+    }, 1000);
 }
 async function handleUpload(e) {
     e.preventDefault();
