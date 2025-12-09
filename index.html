@@ -73,8 +73,12 @@
                 <hr class="my-4 opacity-25">
 
                 <div class="mb-4">
-                    <label class="form-label fw-semibold" style="font-size: 0.9rem;">Profundidad</label>
-                    <select id="profSelect" class="form-select shadow-sm"></select>
+                    <label class="sidebar-label">Profundidad (Series/Polar):</label>
+                        <div class="px-2 mt-5 mb-4">
+                            <div id="depthSlider"></div>
+                        </div>
+
+                        <input type="hidden" id="profSelect">
                 </div>
 
                 <button id="btnUpdate" class="btn btn-primary w-100 fw-bold shadow-sm py-2 mb-4" style="border-radius: 8px;">

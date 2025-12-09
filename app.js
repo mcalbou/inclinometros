@@ -4,6 +4,7 @@ let map = null;
 let mapMarker = null;
 let currentSensorInfo = null;
 let dateSlider = null;
+let depthSlider = null;
 
 const COLOR_A = "#1f77b4";
 const COLOR_B = "#ff7f0e";
@@ -147,23 +148,67 @@ function setupDates() {
 }
 
 function setupDepths() {
-    const profSel = document.getElementById('profSelect');
-    const oldVal = profSel.value;
+    // 1. Obtener lista de profundidades únicas
+    const uniqueProfs = [...new Set(currentData.map(item => parseFloat(item.profundidad)))].sort((a,b) => a - b);
     
-    // Obtener profundidades únicas
-    const uniqueProfs = [...new Set(currentData.map(item => item.profundidad))].sort((a,b) => a - b);
+    if (uniqueProfs.length === 0) return;
+
+    const minProf = uniqueProfs[0];
+    const maxProf = uniqueProfs[uniqueProfs.length - 1];
     
-    profSel.innerHTML = '';
-    uniqueProfs.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p;
-        opt.textContent = p + ' m';
-        profSel.appendChild(opt);
+    // Calculamos el "paso" (step) asumiendo que es regular (ej: cada 0.5m)
+    // Si hay solo 1 profundidad, el paso es 0
+    let stepVal = 0.5; 
+    if (uniqueProfs.length > 1) {
+        stepVal = uniqueProfs[1] - uniqueProfs[0];
+    }
+
+    const sliderElement = document.getElementById('depthSlider');
+    const hiddenInput = document.getElementById('profSelect');
+
+    // 2. Destruir si ya existe (para evitar duplicados al cambiar de sensor)
+    if (sliderElement.noUiSlider) {
+        sliderElement.noUiSlider.destroy();
+    }
+
+    // 3. Crear el Slider de Profundidad
+    noUiSlider.create(sliderElement, {
+        start: [minProf],     // Empieza en la mínima
+        connect: 'lower',     // Rellena la barra desde la izquierda (estilo volumen)
+        range: {
+            'min': minProf,
+            'max': maxProf
+        },
+        step: stepVal,        // Salta de 0.5 en 0.5 (o lo que tenga el sensor)
+        
+        // Formateador: Añade la "m" de metros al tooltip
+        tooltips: {
+            to: function(val) {
+                return parseFloat(val).toFixed(1) + " m";
+            }
+        },
+        // Pips: (Opcional) Si quieres rayitas debajo, añade pips: {mode: 'steps', density: 10}
     });
 
-    if (oldVal && uniqueProfs.includes(parseFloat(oldVal))) {
-        profSel.value = oldVal;
-    }
+    // 4. Lógica de actualización
+    sliderElement.noUiSlider.on('update', function (values) {
+        const selectedDepth = parseFloat(values[0]);
+        
+        // Actualizar el input oculto
+        hiddenInput.value = selectedDepth;
+        
+        // Actualizar textos en la interfaz
+        document.getElementById('txtProfTime').textContent = selectedDepth;
+        document.getElementById('txtProfPolar').textContent = selectedDepth;
+    });
+
+    // 5. Solo redibujar gráficos pesados al soltar el ratón
+    sliderElement.noUiSlider.on('change', function () {
+        renderAllCharts();
+    });
+
+    // Inicialización manual del valor
+    hiddenInput.value = minProf;
 }
 
 function getFilteredData() {

@@ -365,3 +365,60 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
     border-style: solid;
     border-color: #cbd5e1 transparent transparent transparent;
 }
+
+/* ================= ESTILOS EXTRA PARA EL SLIDER DE PROFUNDIDAD ================= */
+
+/* Aplicamos el mismo estilo base que al de fechas */
+#depthSlider {
+    height: 6px;
+    border: none;
+    border-radius: 3px;
+    background: #e2e8f0;
+    box-shadow: none;
+}
+
+/* Color de la barra de progreso (Izquierda del punto) */
+#depthSlider .noUi-connect {
+    background: #5c87b2; /* Azul Corporativo */
+}
+
+/* El círculo manejador (Igual que el de fechas) */
+#depthSlider .noUi-handle {
+    height: 20px;
+    width: 20px;
+    top: -7px;
+    right: -10px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #5c87b2;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    cursor: pointer;
+}
+
+/* Efecto hover */
+#depthSlider .noUi-handle:active {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px rgba(92, 135, 178, 0.2);
+}
+
+/* Ocultar líneas feas */
+#depthSlider .noUi-handle:before, #depthSlider .noUi-handle:after {
+    display: none;
+}
+
+/* Etiqueta flotante */
+#depthSlider .noUi-tooltip {
+    display: block;
+    position: absolute;
+    bottom: 140%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
