@@ -29,37 +29,19 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
 /* ================= 2. BARRA LATERAL (SIDEBAR) ================= */
 .sidebar-container {
     background-color: #ffffff;
-    box-shadow: 2px 0 15px rgba(0,0,0,0.03); /* Sombra suave a la derecha */
-    z-index: 10;
-    height: 100vh; /* Ocupa toda la altura */
-    overflow-y: auto; /* Scroll si la pantalla es pequeña */
-    border-right: 1px solid #f1f5f9;
-}
-
-.form-control, .form-select {
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    padding: 0.6rem 0.75rem;
-    transition: all 0.2s ease;
-}
-
-.form-control:focus, .form-select:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.upload-zone:hover {
-    background-color: #f1f5f9 !important;
-    border-color: #94a3b8 !important;
-}
-
-/* Scrollbar fina para el sidebar */
-.sidebar-container::-webkit-scrollbar {
-    width: 5px;
-}
-.sidebar-container::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 10px;
+    
+    /* STICKY LOGIC */
+    position: -webkit-sticky; /* For Safari */
+    position: sticky;
+    top: 0;
+    height: 100vh; /* Scroll inside sidebar if content is long */
+    overflow-y: auto;
+    
+    /* Visual Styles (Keep these) */
+    padding: 2rem 1.5rem;
+    border-right: 1px solid #e2e8f0;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+    z-index: 100; /* Ensures it stays above other content */
 }
 
 .sidebar-label {
