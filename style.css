@@ -34,8 +34,8 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     position: -webkit-sticky; /* For Safari */
     position: sticky;
     top: 0;
-    height: 100vh; /* Fixed to viewport height */
-    overflow-y: hidden; /* Hide sidebar's internal scrollbar */
+    height: 100vh; /* Scroll inside sidebar if content is long */
+    overflow-y: auto;
     
     /* Visual Styles (Keep these) */
     padding: 2rem 1.5rem;
@@ -351,22 +351,7 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
     font-weight: 700;
     font-family: 'Inter', sans-serif;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    /* Keep date text horizontal (single line) so labels stay side-by-side */
     white-space: nowrap;
-    text-align: center;
-    box-sizing: border-box;
-    /* Allow tooltip to shrink instead of forcing page scroll; keep it on one line */
-    max-width: calc(100vw - 48px); /* leave some margin from edges */
-    overflow: visible;
-    line-height: 1.1;
-    z-index: 9999; /* Ensure it stays above other elements */
-    /* Aggressive responsive font so long dates scale down on small screens */
-    font-size: clamp(0.5rem, 1.0vw, 0.75rem);
-    /* Place tooltip a stable distance above the handle */
-    bottom: calc(100% + 8px);
-    /* Make sure it centers over the handle but never moves document flow */
-    left: 50%;
-    transform: translateX(-50%);
 }
 
 /* Triangulito debajo del tooltip (Flecha) */
@@ -469,4 +454,60 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
 /* Quitar líneas decorativas por defecto en ambos */
 .noUi-handle:before, .noUi-handle:after {
     display: none !important;
+}
+
+/* ================= TOOLTIPS ESCALONADOS (ARRIBA Y ABAJO) ================= */
+
+/* 1. Resetear estilos comunes para el Slider de Fechas */
+#dateSlider .noUi-tooltip {
+    display: block;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    z-index: 100;
+}
+
+/* 2. PRIMERA FECHA (Izquierda) -> PONER DEBAJO */
+#dateSlider .noUi-handle-lower .noUi-tooltip {
+    top: 140%;  /* La empuja hacia abajo */
+    bottom: auto;
+}
+
+/* Flechita apuntando hacia ARRIBA (Triángulo superior) */
+#dateSlider .noUi-handle-lower .noUi-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%; /* Se coloca en el borde superior de la caja */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #cbd5e1 transparent; /* Apunta arriba */
+}
+
+/* 3. SEGUNDA FECHA (Derecha) -> PONER ENCIMA */
+#dateSlider .noUi-handle-upper .noUi-tooltip {
+    bottom: 140%; /* La empuja hacia arriba */
+    top: auto;
+}
+
+/* Flechita apuntando hacia ABAJO (Triángulo inferior) */
+#dateSlider .noUi-handle-upper .noUi-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%; /* Se coloca en el borde inferior de la caja */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #cbd5e1 transparent transparent transparent; /* Apunta abajo */
 }
