@@ -3,6 +3,7 @@ let currentData = [];
 let map = null;
 let mapMarker = null;
 let currentSensorInfo = null;
+let dateSlider = null;
 
 const COLOR_A = "#1f77b4";
 const COLOR_B = "#ff7f0e";
@@ -85,15 +86,64 @@ async function updateDashboard() {
 function setupDates() {
     if(currentData.length === 0) return;
     
-    // Asumimos que vienen ordenados por fecha
-    const feMin = currentData[0].fecha_str;
-    const feMax = currentData[currentData.length - 1].fecha_str;
+    // 1. Obtener rango de fechas (timestamps)
+    const feMinStr = currentData[0].fecha_str;
+    const feMaxStr = currentData[currentData.length - 1].fecha_str;
+    
+    const minTs = new Date(feMinStr).getTime();
+    const maxTs = new Date(feMaxStr).getTime();
 
-    const inStart = document.getElementById('startDate');
-    const inEnd = document.getElementById('endDate');
+    const slider = document.getElementById('dateSlider');
 
-    if(!inStart.value) inStart.value = feMin;
-    if(!inEnd.value) inEnd.value = feMax;
+    // 2. Si ya existe, destruirlo para evitar duplicados al recargar
+    if (slider.noUiSlider) {
+        slider.noUiSlider.destroy();
+    }
+
+    // 3. Crear el Slider
+    noUiSlider.create(slider, {
+        start: [minTs, maxTs], // Empieza seleccionando todo
+        connect: true,         // Relleno azul entre puntos
+        range: {
+            'min': minTs,
+            'max': maxTs
+        },
+        step: 86400000, // Pasos de 1 día (en ms)
+        
+        // Formateador: Qué se muestra en la etiqueta flotante
+        tooltips: [
+            {
+                to: function(val) {
+                    const d = new Date(parseInt(val));
+                    return d.toLocaleDateString('es-ES'); // "17/02/2025"
+                }
+            },
+            {
+                to: function(val) {
+                    const d = new Date(parseInt(val));
+                    return d.toLocaleDateString('es-ES');
+                }
+            }
+        ]
+    });
+
+    // 4. Conectar con el sistema de filtrado
+    // Evento 'set': Se dispara solo cuando SUELTAS el slider (mejora rendimiento)
+    slider.noUiSlider.on('set', function (values) {
+        // Convertir a YYYY-MM-DD para que el filtro de JS lo entienda
+        const start = new Date(parseInt(values[0])).toISOString().split('T')[0];
+        const end = new Date(parseInt(values[1])).toISOString().split('T')[0];
+
+        document.getElementById('startDate').value = start;
+        document.getElementById('endDate').value = end;
+        
+        // Actualizar gráficos automáticamente
+        renderAllCharts();
+    });
+    
+    // Inicializar inputs ocultos
+    document.getElementById('startDate').value = feMinStr;
+    document.getElementById('endDate').value = feMaxStr;
 }
 
 function setupDepths() {

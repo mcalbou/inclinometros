@@ -290,3 +290,78 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
 #sensorInfoBox small.text-primary {
     color: #3a474c !important; /* Negro grisáceo solicitado */
 }
+/* ================= SLIDER DE FECHAS ESTILO MODERNO ================= */
+
+/* 1. La barra base */
+#dateSlider {
+    height: 6px; /* Barra fina y elegante */
+    border: none;
+    border-radius: 3px;
+    background: #e2e8f0; /* Gris muy suave */
+    box-shadow: none;
+    margin-top: 40px; /* Espacio para que quepan las etiquetas arriba */
+}
+/* 2. La parte conectada (el rango seleccionado) */
+.noUi-connect {
+    background: #5c87b2; /* Tu Azul Corporativo */
+    border-radius: 3px;
+}
+
+/* 3. Los manejadores (las bolitas) */
+.noUi-handle {
+    height: 20px;
+    width: 20px;
+    top: -7px; /* Centrado verticalmente respecto a la barra */
+    right: -10px;
+    
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #5c87b2; /* Borde azul fino */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra suave */
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+/* Efecto al tocar la bolita */
+.noUi-handle:active {
+    transform: scale(1.1); 
+    box-shadow: 0 0 0 3px rgba(92, 135, 178, 0.2); /* Resplandor al pulsar */
+}
+
+/* Quitar las rayitas feas que trae por defecto dentro de la bola */
+.noUi-handle:before, .noUi-handle:after {
+    display: none;
+}
+
+/* 4. Las etiquetas flotantes (Tooltips con la fecha) */
+.noUi-tooltip {
+    display: block;
+    position: absolute;
+    bottom: 140%; /* Flota bien arriba */
+    left: 50%;
+    transform: translateX(-50%);
+    
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+    
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    white-space: nowrap;
+}
+
+/* Triangulito debajo del tooltip (Flecha) */
+.noUi-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #cbd5e1 transparent transparent transparent;
+}
