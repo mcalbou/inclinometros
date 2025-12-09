@@ -240,3 +240,53 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
 @media (max-width: 992px) {
     .main-container { padding: 2rem; }
 }
+
+/* ================= COLOR PERSONALIZADO DEL BOTÓN ACTUALIZAR ================= */
+
+#btnUpdate {
+    /* CAMBIA ESTE CÓDIGO HEX POR EL COLOR QUE QUIERAS */
+    background:  #9cbcd4  !important;  /* Naranja ejemplo */
+    
+    border: none !important;
+    color: #ffffff !important; /* Color del texto (blanco) */
+    transition: all 0.3s ease;
+}
+
+/* Color cuando pasas el ratón por encima (Hover) */
+#btnUpdate:hover {
+    /* Pon aquí un color un poco más oscuro */
+    background:  #6d8698  !important; 
+    transform: translateY(-2px); /* Pequeño efecto de elevación */
+    box-shadow: 0 4px 12px rgba(255, 127, 14, 0.3); /* Sombra del mismo color */
+}
+
+
+/* 2. Botón "Cargar a BD" (El de abajo del todo) */
+#uploadForm button {
+    /* CAMBIA EL CÓDIGO HEX (#...) POR EL COLOR QUE QUIERAS */
+    background-color: #1e293b !important; /* Ejemplo: Gris Oscuro/Negro */
+    
+    border: none !important;
+    color: white !important;
+    transition: all 0.3s ease;
+}
+
+#uploadForm button:hover {
+    filter: brightness(120%); /* Lo aclara un poco al pasar el ratón */
+}
+
+/* ================= COLOR CAJA INFO (AZUL) ================= */
+#sensorInfoBox {
+    background-color: #eff6ff !important; /* Azul muy pálido */
+    border: 1px solid #dbeafe !important;
+    border-left: 4px solid  #9cbcd4  !important; /* Azul Calsens */
+    color:   #9cbcd4  !important;
+}
+#sensorInfoBox strong{
+    color:  #181e23;
+}
+/* ================= COLOR: DATOS DEL SENSOR ================= */
+/* Texto "DATOS DEL SENSOR" dentro de la caja de información */
+#sensorInfoBox small.text-primary {
+    color: #3a474c !important; /* Negro grisáceo solicitado */
+}
