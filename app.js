@@ -271,9 +271,11 @@ function renderAllCharts() {
     document.getElementById('txtProfPolar').textContent = profVal;
 
     // 1. Gráficos de Perfil (A y B)
-    const dates = [...new Set(data.map(d => d.fecha_str))];
-    
-    // Función auxiliar para formatear fecha (opcional, para estética)
+    // Ordenamos fechas para saber cuál es la última real
+    const dates = [...new Set(data.map(d => d.fecha_str))].sort();
+    const latestDate = dates[dates.length - 1]; // La última fecha
+
+    // Función auxiliar para formatear fecha visualmente
     const formatDateES = (str) => {
         if(!str) return str;
         const [y, m, d] = str.split('-');
@@ -284,14 +286,38 @@ function renderAllCharts() {
         const traces = [];
         dates.forEach(date => {
             const dateData = data.filter(d => d.fecha_str === date);
+            const isLatest = (date === latestDate); // ¿Es la última?
+
             traces.push({
                 x: dateData.map(d => axis === 'A' ? d.valor_a : d.valor_b),
                 y: dateData.map(d => d.profundidad),
-                mode: 'lines',
+                
+                // AQUÍ ESTÁ EL CAMBIO:
+                // Si es la última -> 'lines+markers' (Línea + Puntos)
+                // Si no -> 'lines' (Solo línea)
+                mode: isLatest ? 'lines+markers' : 'lines',
+                
                 name: formatDateES(date), 
-                line: { width: 1.5 }, // Línea un poco más visible
-                showlegend: true,    // <--- CAMBIO CLAVE 1: Ocultamos la leyenda gigante
-                hovertemplate: `<b>${formatDateES(date)}</b><br>Prof: %{y:.1f}m<br>Desp: %{x:.2f}mm<extra></extra>` // Tooltip limpio
+                
+                // ESTILO DE LÍNEA
+                line: { 
+                    // NO tocamos el 'color' para que siga siendo el automático
+                    // Solo hacemos la última más gorda (3px) y las otras finas (1px)
+                    width: isLatest ? 3 : 1 
+                },
+                
+                // ESTILO DE LOS PUNTOS (Solo saldrán en la última)
+                marker: { 
+                    size: 6,
+                    symbol: 'circle'
+                    // Al no poner color aquí, hereda automáticamente el color de la línea
+                },
+
+                // Que la última se pinte siempre encima de las viejas
+                opacity: isLatest ? 1 : 0.7, 
+
+                showlegend: true,   
+                hovertemplate: `<b>${formatDateES(date)}</b><br>Prof: %{y:.1f}m<br>Desp: %{x:.2f}mm<extra></extra>`
             });
         });
         return traces;
