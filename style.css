@@ -351,7 +351,22 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
     font-weight: 700;
     font-family: 'Inter', sans-serif;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    /* Keep date text horizontal (single line) so labels stay side-by-side */
     white-space: nowrap;
+    text-align: center;
+    box-sizing: border-box;
+    /* Allow tooltip to shrink instead of forcing page scroll; keep it on one line */
+    max-width: calc(100vw - 48px); /* leave some margin from edges */
+    overflow: visible;
+    line-height: 1.1;
+    z-index: 9999; /* Ensure it stays above other elements */
+    /* Aggressive responsive font so long dates scale down on small screens */
+    font-size: clamp(0.5rem, 1.0vw, 0.75rem);
+    /* Place tooltip a stable distance above the handle */
+    bottom: calc(100% + 8px);
+    /* Make sure it centers over the handle but never moves document flow */
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 /* Triangulito debajo del tooltip (Flecha) */
