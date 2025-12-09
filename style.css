@@ -72,7 +72,7 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     font-size: 0.85rem;
     color: var(--text-main);
     margin-top: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
 }
 
 /* Inputs y Selects */
@@ -164,7 +164,7 @@ hr { border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0; }
 h1 {
     font-size: 2.25rem;
     font-weight: 800;
-    color: #0f172a; /* Darker black/blue */
+    color: #9cbcd4; /* Darker black/blue */
     margin-bottom: 2.5rem;
     letter-spacing: -0.02em;
 }
