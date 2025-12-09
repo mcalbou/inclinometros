@@ -422,3 +422,92 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
     font-weight: 700;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
+
+/* ================= IGUALAR TAMAÑO DE BOTONES (FECHA Y PROFUNDIDAD) ================= */
+
+/* Esta regla aplica a LOS DOS sliders a la vez */
+#dateSlider .noUi-handle, 
+#depthSlider .noUi-handle {
+    /* 1. Tamaño exacto para ambos */
+    width: 20px !important;
+    height: 20px !important;
+    
+    /* 2. Centrado vertical exacto (ajustado para barra de 6px) */
+    top: -7px !important;
+    right: -10px !important; /* Centrado horizontal */
+    
+    /* 3. Estilo visual idéntico */
+    border-radius: 50% !important;
+    background: #ffffff !important;
+    border: 2px solid #5c87b2 !important; /* Azul corporativo */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+    cursor: pointer;
+}
+
+/* Efecto "Zoom" al hacer clic (para ambos) */
+#dateSlider .noUi-handle:active, 
+#depthSlider .noUi-handle:active {
+    transform: scale(1.2); /* Crecen un poquito al tocar */
+    box-shadow: 0 0 0 4px rgba(92, 135, 178, 0.2) !important; /* Resplandor azul */
+}
+
+/* Quitar líneas decorativas por defecto en ambos */
+.noUi-handle:before, .noUi-handle:after {
+    display: none !important;
+}
+
+/* ================= TOOLTIPS ESCALONADOS (ARRIBA Y ABAJO) ================= */
+
+/* 1. Resetear estilos comunes para el Slider de Fechas */
+#dateSlider .noUi-tooltip {
+    display: block;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    z-index: 100;
+}
+
+/* 2. PRIMERA FECHA (Izquierda) -> PONER DEBAJO */
+#dateSlider .noUi-handle-lower .noUi-tooltip {
+    top: 140%;  /* La empuja hacia abajo */
+    bottom: auto;
+}
+
+/* Flechita apuntando hacia ARRIBA (Triángulo superior) */
+#dateSlider .noUi-handle-lower .noUi-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%; /* Se coloca en el borde superior de la caja */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #cbd5e1 transparent; /* Apunta arriba */
+}
+
+/* 3. SEGUNDA FECHA (Derecha) -> PONER ENCIMA */
+#dateSlider .noUi-handle-upper .noUi-tooltip {
+    bottom: 140%; /* La empuja hacia arriba */
+    top: auto;
+}
+
+/* Flechita apuntando hacia ABAJO (Triángulo inferior) */
+#dateSlider .noUi-handle-upper .noUi-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%; /* Se coloca en el borde inferior de la caja */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #cbd5e1 transparent transparent transparent; /* Apunta abajo */
+}
