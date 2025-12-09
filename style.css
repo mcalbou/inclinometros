@@ -2,12 +2,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 
 :root {
-    --primary-color: #2563eb;       /* Modern Tech Blue */
-    --primary-hover: #1d4ed8;       /* Darker Blue for hover */
+    --primary-color:  #9cbcd4 ;       /* Modern Tech Blue */
+    --primary-hover:  #9cbcd4 ;       /* Darker Blue for hover */
     --bg-color: #f8fafc;            /* Very light blue-gray background */
     --card-bg: #ffffff;             /* Pure white for cards */
-    --text-main: #1e293b;           /* Dark slate for main text */
-    --text-muted: #64748b;          /* Muted gray for secondary text */
+    --text-main: #789bd5;           /* Dark slate for main text */
+    --text-muted: #778ba8;          /* Muted gray for secondary text */
     --border-radius: 12px;          /* Modern rounded corners */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -120,7 +120,7 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
     background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
     color: white;
     border: none;
-    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 4px 6px rgba(45, 63, 101, 0.3);
 }
 
 .st-button.primary:hover {
