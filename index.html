@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard Inclinómetros</title>
+    <title>Dashboard inclinómetros</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -18,7 +18,7 @@
             background:rgba(255,255,255,0.8); z-index:9999; 
             flex-direction: column; align-items: center; justify-content: center;
         }
-        .vis-container { min-height: 450px; } /* Asegurar altura para gráficos JS */
+        .vis-container { min-height: 450px; } 
     </style>
 </head>
 <body>
@@ -29,44 +29,65 @@
 </div>
 
 <div class="container-fluid">
-    <div class="row">
-        
-        <div class="col-md-3 col-lg-2 sidebar-container">
+    <div class="row">        
+        <div class="col-md-3 col-lg-2 sidebar-container d-flex flex-column">
             
-            <h5 class="mb-3">Configuración</h5>
-            
-            <label class="sidebar-label">Seleccionar inclinómetro:</label>
-            <select id="sensorSelect" class="st-input"></select>
-
-            <div id="sensorInfoBox" class="info-box" style="display:none;">
-                <strong>Archivo:</strong> <span id="infoNombre"></span><br>
-                <strong>Lat/Lon:</strong> <span id="infoCoords"></span>
+            <div class="logo-area text-center mb-4 mt-2">
+                <img src="static/img/logo.png" alt="Logo" class="img-fluid mb-2" style="max-height: 60px;" onerror="this.style.display='none'; document.getElementById('logoText').style.display='block';">
+                <h4 id="logoText" style="display:none; color: var(--primary-color); font-weight:800; letter-spacing: -1px;">DASHBOARD</h4>
             </div>
 
-            <hr>
+            <div class="control-group">
+                <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size: 0.75rem; letter-spacing: 1px;">Configuración</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size: 0.9rem;">📍 Inclinómetro</label>
+                    <select id="sensorSelect" class="form-select shadow-sm border-0 bg-light"></select>
+                </div>
 
-            <label class="sidebar-label">Rango de Fechas:</label>
-            <input type="date" id="startDate" class="st-input">
-            <input type="date" id="endDate" class="st-input">
+                <div id="sensorInfoBox" class="card shadow-sm border-0 mb-4" style="display:none; background: #e0f2fe; border-left: 4px solid #0ea5e9 !important;">
+                    <div class="card-body p-2">
+                        <small class="text-primary fw-bold">DATOS DEL SENSOR</small>
+                        <div style="font-size: 0.85rem; line-height: 1.4;" class="mt-1 text-dark">
+                            <strong>ID:</strong> <span id="infoNombre">...</span><br>
+                            <span class="text-muted">Coord:</span> <span id="infoCoords">...</span>
+                        </div>
+                    </div>
+                </div>
 
-            <hr>
+                <hr class="my-4 opacity-25">
 
-            <label class="sidebar-label">Profundidad (Series/Polar):</label>
-            <select id="profSelect" class="st-input"></select>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size: 0.9rem;">📅 Rango de Fechas</label>
+                    <div class="d-flex flex-column gap-2">
+                        <input type="date" id="startDate" class="form-control shadow-sm" style="font-size: 0.85rem;">
+                        <input type="date" id="endDate" class="form-control shadow-sm" style="font-size: 0.85rem;">
+                    </div>
+                </div>
 
-            <button id="btnUpdate" class="st-button primary mt-2">Actualizar Vista</button>
+                <hr class="my-4 opacity-25">
 
-            <br><hr>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold" style="font-size: 0.9rem;">📏 Profundidad</label>
+                    <select id="profSelect" class="form-select shadow-sm"></select>
+                </div>
 
-            <div class="mb-4" style="background: #ffffff; padding: 15px; border-radius: 8px; border: 2px dashed #cbd5e1;">
-                <label class="sidebar-label">📤 Cargar Datos (CSV)</label>
+                <button id="btnUpdate" class="btn btn-primary w-100 fw-bold shadow-sm py-2 mb-4" style="border-radius: 8px;">
+                    🔄 Actualizar Vista
+                </button>
+            </div>
+
+            <div class="mt-auto upload-zone p-3 rounded-3 text-center" style="background: #f8fafc; border: 2px dashed #cbd5e1; transition: all 0.3s;">
+                <label class="form-label fw-bold text-secondary mb-2" style="font-size: 0.85rem;">📤 IMPORTAR CSV</label>
                 <form id="uploadForm">
-                    <input type="file" name="file" id="csvFile" accept=".csv" class="file-input" required>                    
-                    <button type="submit" class="st-button" style="margin-top: 10px; background-color: #28a745; color: white; border: none;">
+                    <input type="file" name="file" id="csvFile" accept=".csv" class="form-control form-control-sm mb-2">
+                    <button type="submit" class="btn btn-success btn-sm w-100 fw-semibold">
                         Cargar a BD
                     </button>
                 </form>
             </div>
+            
+            <div class="pb-4"></div> 
         </div>
 
         <div class="col-md-9 col-lg-10 main-container">
@@ -116,7 +137,7 @@
                 </div>
             </div>
 
-            <h3 class="mt-4">Serie de tiempo (<span id="txtProfTime">0</span> m)</h3>
+            <h3 class="mt-4">Serie de tiempo (<span id="txtProfTime">0</span>  m)</h3>
             <div class="row g-3 mb-4">
                 <div class="col-12"> 
                     <div class="vis-container">
@@ -125,7 +146,7 @@
                 </div>
             </div>
 
-            <h3 class="mt-4">Polar (<span id="txtProfPolar">0</span> m)</h3>
+            <h3 class="mt-4">Polar (<span id="txtProfPolar">0</span>  m)</h3>
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="vis-container" style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">

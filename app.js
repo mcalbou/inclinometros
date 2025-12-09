@@ -263,12 +263,12 @@ function renderAllCharts() {
 
     const traceAmber = {
         type: 'scatterpolar', r: new Array(360).fill(10), theta: Array.from({length:360}, (_,i)=>i),
-        mode: 'lines', line: {color: 'yellow'}, name: 'Umbral Ámbar', hoverinfo: 'skip',
+        mode: 'lines', line: {color: 'yellow'}, name: 'Umbral ámbar', hoverinfo: 'skip',
         showlegend: true // Esta sí la dejamos para saber qué es la línea amarilla
     };
 
     const polarLayout = {
-        title: 'Desplazamiento Polar(mm)',
+        title: 'Desplazamiento polar (mm)',
         polar: { 
             radialaxis: { range: [0, 20] },
             domain: { x: [0, 1], y: [0, 1] }
