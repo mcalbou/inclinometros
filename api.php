@@ -231,4 +231,59 @@ if ($action === 'create_user' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     exit;
 }
+// ==========================================
+// E. EXPORTAR CSV (DISPONIBLE PARA TODOS)
+// ==========================================
+if ($action === 'export_csv') {
+    
+    // Solo requerimos estar logueados (cualquier rol vale)
+    if (!isset($_SESSION['user_id'])) {
+        die('Acceso denegado');
+    }
+
+    $sensor_id = $_GET['id'] ?? 0;
+    $start = $_GET['start'] ?? '1900-01-01';
+    $end = $_GET['end'] ?? '2100-01-01';
+
+    // Obtener nombre del sensor para el nombre del archivo
+    $stmtName = $pdo->prepare("SELECT nombre FROM sensores WHERE id = ?");
+    $stmtName->execute([$sensor_id]);
+    $sensorName = $stmtName->fetchColumn() ?: 'Sensor';
+
+    // Configurar cabeceras para forzar descarga
+    $filename = "Datos_" . str_replace(' ', '_', $sensorName) . "_" . date('Y-m-d') . ".csv";
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+    // Abrir salida
+    $output = fopen('php://output', 'w');
+
+    // Escribir BOM para que Excel abra bien los caracteres raros (tildes, etc)
+    fwrite($output, "\xEF\xBB\xBF");
+
+    // Cabeceras de columna
+    fputcsv($output, ['Fecha', 'Profundidad (m)', 'Eje A (mm)', 'Eje B (mm)'], ';');
+
+    // Consultar datos
+    $sql = "SELECT to_char(fecha, 'DD/MM/YYYY') as fecha_fmt, profundidad, valor_a, valor_b 
+            FROM lecturas 
+            WHERE sensor_id = :sid AND fecha >= :start AND fecha <= :end 
+            ORDER BY fecha ASC, profundidad ASC";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['sid' => $sensor_id, 'start' => $start, 'end' => $end]);
+
+    // Escribir filas
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        // Formatear números con coma decimal para Excel en español (opcional)
+        $row['profundidad'] = str_replace('.', ',', $row['profundidad']);
+        $row['valor_a'] = str_replace('.', ',', $row['valor_a']);
+        $row['valor_b'] = str_replace('.', ',', $row['valor_b']);
+        
+        fputcsv($output, $row, ';');
+    }
+
+    fclose($output);
+    exit;
+}
 ?>

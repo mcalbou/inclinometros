@@ -104,6 +104,27 @@ async function initApp() {
                 }
             });
         }
+        // --- LISTENER PARA DESCARGAR CSV (NUEVO) ---
+        const btnDownload = document.getElementById('btnDownloadCsv');
+        if (btnDownload) {
+            btnDownload.addEventListener('click', () => {
+                const sel = document.getElementById('sensorSelect');
+                const start = document.getElementById('startDate').value;
+                const end = document.getElementById('endDate').value;
+
+                // Validación: ¿Hay sensor seleccionado?
+                if (!sel || !sel.value) {
+                    Swal.fire('Atención', 'Selecciona un sensor primero', 'warning');
+                    return;
+                }
+
+                // Generar enlace de descarga directa con los filtros actuales
+                const url = `api.php?action=export_csv&id=${sel.value}&start=${start}&end=${end}`;
+                
+                // Forzar la descarga
+                window.location.href = url;
+            });
+        }
 
     } catch (err) {
         console.error("Error en inicialización:", err);
