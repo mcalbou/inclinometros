@@ -362,11 +362,48 @@ function renderAllCharts() {
         name: 'Eje B', type: 'scatter', mode: 'lines+markers', marker: {color: COLOR_B}
     };
 
-    Plotly.newPlot('chartTime', [traceTimeA, traceTimeB], {
+    // --- AQUÍ ESTÁ EL CAMBIO PARA EL RANGO Y UMBRALES ---
+    const layoutTime = {
         title: `Serie Temporal - ${profVal}m`,
-        yaxis: { title: 'Desplazamiento (mm)' },
+        yaxis: { 
+            title: 'Desplazamiento (mm)',
+            range: [-20, 20] // <--- 1. RANGO FIJO
+        },
+        // <--- 2. UMBRALES VISUALES
+        shapes: [
+            // Zona de Advertencia Superior (+10 a +20)
+            {
+                type: 'rect',
+                xref: 'paper', x0: 0, x1: 1, // Todo el ancho del gráfico
+                y0: 10, y1: 20,              // Altura
+                fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below'
+            },
+            // Zona de Advertencia Inferior (-10 a -20)
+            {
+                type: 'rect',
+                xref: 'paper', x0: 0, x1: 1,
+                y0: -20, y1: -10,
+                fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below'
+            },
+            // Línea discontinua en +10
+            {
+                type: 'line',
+                xref: 'paper', x0: 0, x1: 1,
+                y0: 10, y1: 10,
+                line: { color: '#ffbd2e', dash: 'dash', width: 1 }
+            },
+            // Línea discontinua en -10
+            {
+                type: 'line',
+                xref: 'paper', x0: 0, x1: 1,
+                y0: -10, y1: -10,
+                line: { color: '#ffbd2e', dash: 'dash', width: 1 }
+            }
+        ],
         hovermode: 'closest'
-    });
+    };
+
+    Plotly.newPlot('chartTime', [traceTimeA, traceTimeB], layoutTime);
 
     // 3. Polar (Fijando Profundidad)
     const rVals = dataProf.map(d => Math.sqrt(d.valor_a**2 + d.valor_b**2));
