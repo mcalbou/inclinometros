@@ -71,6 +71,39 @@ async function initApp() {
                 updateDashboard(); 
             });
         }
+        // Listener para Crear Usuario
+        const createUserForm = document.getElementById('createUserForm');
+        if(createUserForm) {
+            createUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                // Recoger datos
+                const formData = new FormData(e.target);
+                
+                // Cerrar el modal (usando la instancia de Bootstrap)
+                const modalEl = document.getElementById('userModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+
+                showLoading(true);
+
+                try {
+                    const res = await axios.post('api.php?action=create_user', formData);
+                    
+                    if (res.data.success) {
+                        Swal.fire('Creado', res.data.message, 'success');
+                        e.target.reset(); // Limpiar formulario
+                    } else {
+                        Swal.fire('Error', res.data.message, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    Swal.fire('Error', 'No se pudo crear el usuario', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            });
+        }
 
     } catch (err) {
         console.error("Error en inicialización:", err);
@@ -81,9 +114,16 @@ function setupUserUI(userData) {
     const userDisplay = document.getElementById('userDisplay');
     if(userDisplay) userDisplay.textContent = `${userData.usuario} (${userData.rol})`;
 
+    // Lógica CLIENTE (Ocultar carga)
     if (userData.rol === 'cliente') {
         const uploadZone = document.querySelector('.upload-zone');
         if(uploadZone) uploadZone.style.display = 'none';
+    }
+
+    // Lógica SUPERADMIN (Mostrar panel de crear usuarios)
+    if (userData.rol === 'superAdmin') {
+        const adminPanel = document.getElementById('adminPanel');
+        if(adminPanel) adminPanel.style.display = 'block';
     }
 }
 

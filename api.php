@@ -186,4 +186,49 @@ if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     exit;
 }
+
+// ==========================================
+// D. CREAR USUARIOS (SOLO SUPERADMIN)
+// ==========================================
+if ($action === 'create_user' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+    // 1. SEGURIDAD: Solo el superAdmin puede pasar
+    if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'superAdmin') {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado. Solo SuperAdmin.']);
+        exit;
+    }
+
+    $u = $_POST['new_user'] ?? '';
+    $p = $_POST['new_pass'] ?? '';
+    $r = $_POST['new_role'] ?? '';
+
+    // Validar datos básicos
+    if (empty($u) || empty($p) || empty($r)) {
+        echo json_encode(['success' => false, 'message' => 'Faltan datos']);
+        exit;
+    }
+
+    try {
+        // 2. Comprobar si ya existe
+        $stmtCheck = $pdo->prepare("SELECT id FROM usuarios WHERE usuario = ?");
+        $stmtCheck->execute([$u]);
+        if ($stmtCheck->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'El usuario ya existe']);
+            exit;
+        }
+
+        // 3. Encriptar contraseña y Guardar
+        $hash = password_hash($p, PASSWORD_DEFAULT);
+        
+        $sql = "INSERT INTO usuarios (usuario, password, rol) VALUES (?, ?, ?)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$u, $hash, $r]);
+
+        echo json_encode(['success' => true, 'message' => "Usuario '$u' creado correctamente."]);
+
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'Error BD: ' . $e->getMessage()]);
+    }
+    exit;
+}
 ?>

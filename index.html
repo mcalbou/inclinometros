@@ -8,11 +8,13 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css">
+    <link rel="stylesheet" href="style.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>  
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
         #loadingOverlay {
@@ -25,7 +27,7 @@
 </head>
 <body>
 
-<div id="loadingOverlay" style="display: none;">
+<div id="loadingOverlay">
     <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
     <h4 class="mt-3 text-muted">Procesando datos...</h4>
 </div>
@@ -64,7 +66,6 @@
                         <div class="px-2 mt-5 mb-4"> 
                             <div id="dateSlider"></div>
                         </div>
-
                         <input type="hidden" id="startDate">
                         <input type="hidden" id="endDate">
                 </div>
@@ -76,12 +77,19 @@
                         <div class="px-2 mt-5 mb-4">
                             <div id="depthSlider"></div>
                         </div>
-
                         <input type="hidden" id="profSelect">
                 </div>
 
                 <button id="btnUpdate" class="btn btn-primary w-100 fw-bold shadow-sm py-2 mb-4" style="border-radius: 8px;">
                     Reestablecer Vista
+                </button>
+            </div>
+
+            <div id="adminPanel" class="mb-3" style="display: none;">
+                <hr class="my-4 opacity-25">
+                <label class="sidebar-label" style="color: #dc2626;">ADMINISTRACIÓN</label>
+                <button class="btn btn-outline-danger w-100 btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#userModal">
+                    + Nuevo Usuario
                 </button>
             </div>
 
@@ -99,24 +107,20 @@
         </div>
 
         <div class="col-md-9 col-lg-10 main-container">
+            
             <div class="d-flex justify-content-between align-items-center mb-4">
-        
                 <h1 class="mb-0" style="font-size: 2rem;">Dashboard inclinómetros</h1>
                 
                 <div class="user-header shadow-sm d-flex align-items-center gap-3 bg-white">
-                    
                     <div class="user-info text-end" style="line-height: 1.2;">
                         <span class="d-block text-muted" style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Conectado como</span>
                         <span id="userDisplay" style="font-size: 0.9rem; font-weight: 700; color: #334155;">Cargando...</span>
                     </div>
-                    
                     <div class="vr" style="height: 30px; width: 1px; background: #e2e8f0;"></div> 
-                    
                     <button id="btnExit" class="btn btn-sm btn-outline-danger fw-bold" style="font-size: 0.75rem; padding: 5px 12px; border-radius: 6px;">
                         Salir
                     </button>
                 </div>
-
             </div>
             
             <div id="alertContainer"></div>
@@ -176,11 +180,7 @@
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="vis-container" style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                        
-                        <img src="static/img/Polar.png" 
-                             alt="Imagen Referencia Polar" 
-                             style="max-width: 100%; max-height: 550px; object-fit: contain;">
-                        
+                        <img src="static/img/Polar.png" alt="Imagen Referencia Polar" style="max-width: 100%; max-height: 550px; object-fit: contain;">
                         <p class="text-muted mt-2">Imagen de referencia</p>
                     </div>
                 </div>
@@ -189,14 +189,46 @@
                         <div id="chartPolar" style="width:100%; height:600px;"></div>
                     </div>
                 </div>
-
             </div>
 
         </div>
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold" style="font-size: 1rem;">Crear Nuevo Usuario</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="createUserForm">
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Nombre Usuario</label>
+                <input type="text" name="new_user" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Contraseña</label>
+                <input type="password" name="new_pass" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Rol / Permisos</label>
+                <select name="new_role" class="form-select">
+                    <option value="cliente">Cliente (Solo ver)</option>
+                    <option value="admin">Admin (Ver y Subir datos)</option>
+                    <option value="superAdmin">SuperAdmin (Todo + Crear usuarios)</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold">Guardar Usuario</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="app.js"></script>
+
 </body>
 </html>
