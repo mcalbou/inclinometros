@@ -13,20 +13,16 @@ const COLOR_B = "#ff7f0e";
 document.addEventListener('DOMContentLoaded', () => {
     
     // 1. ACTIVAR BOTÓN DE SALIR (PRIORIDAD MÁXIMA)
-    // Lo configuramos antes de pedir datos para que funcione siempre.
-    const btnLogout = document.getElementById('btnLogout');
-    if (btnLogout) {
-        btnLogout.addEventListener('click', async (e) => {
+    const btnExit = document.getElementById('btnExit');
+    if (btnExit) {
+        btnExit.addEventListener('click', async (e) => {
             e.preventDefault();
             console.log("Cerrando sesión...");
-            
             try {
-                // Intentar avisar al servidor
                 await axios.get('api.php?action=logout');
             } catch (err) {
-                console.warn("No se pudo contactar con servidor, saliendo igual...");
+                console.warn("Error red logout", err);
             } finally {
-                // Redirigir SIEMPRE, haya error o no
                 window.location.href = 'login.html';
             }
         });
@@ -38,24 +34,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- LÓGICA DE LA APP ---
 async function initApp() {
+    console.log("Iniciando App..."); // DEBUG
     try {
         // Verificar sesión
         const res = await axios.get('api.php?action=check_session');
         
-        // Si no está logueado, fuera
         if (!res.data.logged_in) {
             window.location.href = 'login.html';
             return;
         }
 
-        console.log("Acceso concedido:", res.data.usuario);
-        
-        // Actualizar nombre de usuario en la cabecera
+        console.log("Usuario logueado:", res.data.usuario);
         setupUserUI(res.data);
 
-        // Cargar datos
-        loadSensors();
+        // Cargar datos iniciales
         initMap();
+        await loadSensors();
         
         // Listeners del Dashboard
         const btnUpdate = document.getElementById('btnUpdate');
@@ -64,22 +58,29 @@ async function initApp() {
         const uploadForm = document.getElementById('uploadForm');
         if(uploadForm) uploadForm.addEventListener('submit', handleUpload);
         
+        // --- EL LISTENER CLAVE ---
         const sensorSelect = document.getElementById('sensorSelect');
-        if(sensorSelect) sensorSelect.addEventListener('change', () => { updateSensorInfo(); });
+        if(sensorSelect) {
+            // Eliminamos listeners antiguos clonando el nodo (truco para limpiar basura en memoria)
+            const newSelect = sensorSelect.cloneNode(true);
+            sensorSelect.parentNode.replaceChild(newSelect, sensorSelect);
+            
+            // Añadimos el evento limpio
+            newSelect.addEventListener('change', () => { 
+                console.log("¡Cambio de sensor detectado!"); // DEBUG
+                updateDashboard(); 
+            });
+        }
 
     } catch (err) {
         console.error("Error en inicialización:", err);
-        // Opcional: Si falla la conexión, podrías redirigir al login
-        // window.location.href = 'login.html';
     }
 }
 
 function setupUserUI(userData) {
     const userDisplay = document.getElementById('userDisplay');
-    // Actualiza el texto "Cargando..." con el nombre real
     if(userDisplay) userDisplay.textContent = `${userData.usuario} (${userData.rol})`;
 
-    // Si es CLIENTE, ocultar la zona de carga del sidebar
     if (userData.rol === 'cliente') {
         const uploadZone = document.querySelector('.upload-zone');
         if(uploadZone) uploadZone.style.display = 'none';
@@ -91,6 +92,7 @@ async function loadSensors() {
     try {
         const res = await axios.get('api.php?action=get_sensors');
         const sensores = res.data;
+        // Ojo: al haber clonado el nodo antes, buscamos el elemento fresco del DOM
         const sel = document.getElementById('sensorSelect');
         
         if(sel) {
@@ -105,6 +107,7 @@ async function loadSensors() {
                 opt.dataset.foto = s.foto_path;
                 sel.appendChild(opt);
             });
+            // Cargar el primero por defecto
             if(sensores.length > 0) updateDashboard();
         }
     } catch (err) {
@@ -116,19 +119,27 @@ async function updateDashboard() {
     const sel = document.getElementById('sensorSelect');
     if(!sel || !sel.value) return;
 
+    console.log("Actualizando Dashboard para sensor ID:", sel.value); // DEBUG
     showLoading(true);
 
     try {
+        // 1. Actualizar Info Visual (Mapa/Foto)
         updateSensorInfo();
+
+        // 2. Descargar Datos Nuevos
         const res = await axios.get(`api.php?action=get_data&id=${sel.value}`);
+        console.log("Datos recibidos:", res.data.length, "registros"); // DEBUG
+        
         currentData = res.data;
 
+        // 3. Repintar Todo
+        // Importante: Si no hay datos, currentData es [], setupDates maneja eso limpiando.
         setupDates();
         setupDepths();
         renderAllCharts();
 
     } catch (err) {
-        console.error(err);
+        console.error("Error en updateDashboard:", err);
         Swal.fire('Error', 'No se pudieron cargar los datos', 'error');
     } finally {
         showLoading(false);
@@ -138,15 +149,19 @@ async function updateDashboard() {
 // --- CONFIGURACIÓN DE SLIDERS Y DATOS ---
 
 function setupDates() {
-    if(currentData.length === 0) return;
+    const slider = document.getElementById('dateSlider');
+    if(!slider) return;
+
+    // Si no hay datos, limpiamos inputs pero dejamos el slider 'inutilizado'
+    if(currentData.length === 0) {
+        if (slider.noUiSlider) slider.noUiSlider.destroy();
+        return; 
+    }
     
     const feMinStr = currentData[0].fecha_str;
     const feMaxStr = currentData[currentData.length - 1].fecha_str;
     const minTs = new Date(feMinStr).getTime();
     const maxTs = new Date(feMaxStr).getTime();
-
-    const slider = document.getElementById('dateSlider');
-    if(!slider) return;
 
     if (slider.noUiSlider) slider.noUiSlider.destroy();
 
@@ -174,16 +189,21 @@ function setupDates() {
 }
 
 function setupDepths() {
+    const sliderElement = document.getElementById('depthSlider');
+    const hiddenInput = document.getElementById('profSelect');
+    if(!sliderElement) return;
+
+    // Protección contra datos vacíos
     const uniqueProfs = [...new Set(currentData.map(item => parseFloat(item.profundidad)))].sort((a,b) => a - b);
-    if (uniqueProfs.length === 0) return;
+    
+    if (uniqueProfs.length === 0) {
+        if (sliderElement.noUiSlider) sliderElement.noUiSlider.destroy();
+        return;
+    }
 
     const minProf = uniqueProfs[0];
     const maxProf = uniqueProfs[uniqueProfs.length - 1];
     let stepVal = uniqueProfs.length > 1 ? (uniqueProfs[1] - uniqueProfs[0]) : 0.5;
-
-    const sliderElement = document.getElementById('depthSlider');
-    const hiddenInput = document.getElementById('profSelect');
-    if(!sliderElement) return;
 
     if (sliderElement.noUiSlider) sliderElement.noUiSlider.destroy();
 
@@ -210,7 +230,8 @@ function setupDepths() {
 function getFilteredData() {
     const start = document.getElementById('startDate').value;
     const end = document.getElementById('endDate').value;
-    if(!start || !end) return currentData;
+    // Si los inputs están vacíos (porque no hay datos), devolvemos array vacío
+    if(!start || !end) return [];
     return currentData.filter(d => d.fecha_str >= start && d.fecha_str <= end);
 }
 
@@ -267,6 +288,14 @@ function renderAllCharts() {
     const data = getFilteredData();
     const profInput = document.getElementById('profSelect');
     const profVal = parseFloat(profInput ? profInput.value : 0) || 0;
+
+    // Si no hay datos, limpiamos los gráficos y salimos
+    if (data.length === 0) {
+        ['chartA', 'chartB', 'chartTime', 'chartPolar', 'chart3D'].forEach(id => {
+            Plotly.newPlot(id, [], {title: 'Sin datos'});
+        });
+        return;
+    }
 
     // 1. Gráficos de Perfil (A y B)
     const dates = [...new Set(data.map(d => d.fecha_str))].sort();
