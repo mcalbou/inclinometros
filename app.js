@@ -9,69 +9,122 @@ let depthSlider = null;
 const COLOR_A = "#1f77b4";
 const COLOR_B = "#ff7f0e";
 
-// Inicialización
+// --- INICIALIZACIÓN PRINCIPAL ---
 document.addEventListener('DOMContentLoaded', () => {
-    loadSensors();
-    initMap();
+    
+    // 1. ACTIVAR BOTÓN DE SALIR (PRIORIDAD MÁXIMA)
+    // Lo configuramos antes de pedir datos para que funcione siempre.
+    const btnLogout = document.getElementById('btnLogout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async (e) => {
+            e.preventDefault();
+            console.log("Cerrando sesión...");
+            
+            try {
+                // Intentar avisar al servidor
+                await axios.get('api.php?action=logout');
+            } catch (err) {
+                console.warn("No se pudo contactar con servidor, saliendo igual...");
+            } finally {
+                // Redirigir SIEMPRE, haya error o no
+                window.location.href = 'login.html';
+            }
+        });
+    }
 
-    // Listeners
-    document.getElementById('btnUpdate').addEventListener('click', (e) => {
-        e.preventDefault();
-        updateDashboard();
-    });
-
-    document.getElementById('uploadForm').addEventListener('submit', handleUpload);
+    // 2. INICIAR EL RESTO DE LA APP
+    initApp();
 });
 
-// --- API CALLS ---
+// --- LÓGICA DE LA APP ---
+async function initApp() {
+    try {
+        // Verificar sesión
+        const res = await axios.get('api.php?action=check_session');
+        
+        // Si no está logueado, fuera
+        if (!res.data.logged_in) {
+            window.location.href = 'login.html';
+            return;
+        }
 
+        console.log("Acceso concedido:", res.data.usuario);
+        
+        // Actualizar nombre de usuario en la cabecera
+        setupUserUI(res.data);
+
+        // Cargar datos
+        loadSensors();
+        initMap();
+        
+        // Listeners del Dashboard
+        const btnUpdate = document.getElementById('btnUpdate');
+        if(btnUpdate) btnUpdate.addEventListener('click', (e) => { e.preventDefault(); updateDashboard(); });
+        
+        const uploadForm = document.getElementById('uploadForm');
+        if(uploadForm) uploadForm.addEventListener('submit', handleUpload);
+        
+        const sensorSelect = document.getElementById('sensorSelect');
+        if(sensorSelect) sensorSelect.addEventListener('change', () => { updateSensorInfo(); });
+
+    } catch (err) {
+        console.error("Error en inicialización:", err);
+        // Opcional: Si falla la conexión, podrías redirigir al login
+        // window.location.href = 'login.html';
+    }
+}
+
+function setupUserUI(userData) {
+    const userDisplay = document.getElementById('userDisplay');
+    // Actualiza el texto "Cargando..." con el nombre real
+    if(userDisplay) userDisplay.textContent = `${userData.usuario} (${userData.rol})`;
+
+    // Si es CLIENTE, ocultar la zona de carga del sidebar
+    if (userData.rol === 'cliente') {
+        const uploadZone = document.querySelector('.upload-zone');
+        if(uploadZone) uploadZone.style.display = 'none';
+    }
+}
+
+// --- API CALLS ---
 async function loadSensors() {
     try {
         const res = await axios.get('api.php?action=get_sensors');
         const sensores = res.data;
         const sel = document.getElementById('sensorSelect');
         
-        sel.innerHTML = '';
-        sensores.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.id;
-            opt.textContent = s.nombre;
-            // Guardar data en atributo para acceso rápido
-            opt.dataset.lat = s.latitud;
-            opt.dataset.lon = s.longitud;
-            opt.dataset.nf = s.nf;
-            opt.dataset.foto = s.foto_path;
-            sel.appendChild(opt);
-        });
-
-        if(sensores.length > 0) updateDashboard(); // Cargar el primero
-
+        if(sel) {
+            sel.innerHTML = '';
+            sensores.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                opt.dataset.lat = s.latitud;
+                opt.dataset.lon = s.longitud;
+                opt.dataset.nf = s.nf;
+                opt.dataset.foto = s.foto_path;
+                sel.appendChild(opt);
+            });
+            if(sensores.length > 0) updateDashboard();
+        }
     } catch (err) {
         console.error("Error cargando sensores", err);
     }
 }
 
 async function updateDashboard() {
-    const sensorId = document.getElementById('sensorSelect').value;
-    if(!sensorId) return;
+    const sel = document.getElementById('sensorSelect');
+    if(!sel || !sel.value) return;
 
     showLoading(true);
 
     try {
-        // 1. Actualizar Info del Sensor
         updateSensorInfo();
+        const res = await axios.get(`api.php?action=get_data&id=${sel.value}`);
+        currentData = res.data;
 
-        // 2. Descargar Datos
-        const res = await axios.get(`api.php?action=get_data&id=${sensorId}`);
-        currentData = res.data; // [{fecha_str, profundidad, valor_a, valor_b}, ...]
-
-        // 3. Configurar Fechas (si están vacías)
         setupDates();
-
-        // 4. Llenar Select de Profundidades
         setupDepths();
-
-        // 5. Renderizar Todo
         renderAllCharts();
 
     } catch (err) {
@@ -82,141 +135,82 @@ async function updateDashboard() {
     }
 }
 
-// --- LOGICA DE DATOS ---
+// --- CONFIGURACIÓN DE SLIDERS Y DATOS ---
 
 function setupDates() {
     if(currentData.length === 0) return;
     
-    // 1. Obtener rango de fechas (timestamps)
     const feMinStr = currentData[0].fecha_str;
     const feMaxStr = currentData[currentData.length - 1].fecha_str;
-    
     const minTs = new Date(feMinStr).getTime();
     const maxTs = new Date(feMaxStr).getTime();
 
     const slider = document.getElementById('dateSlider');
+    if(!slider) return;
 
-    // 2. Si ya existe, destruirlo para evitar duplicados al recargar
-    if (slider.noUiSlider) {
-        slider.noUiSlider.destroy();
-    }
+    if (slider.noUiSlider) slider.noUiSlider.destroy();
 
-    // 3. Crear el Slider
     noUiSlider.create(slider, {
-        start: [minTs, maxTs], // Empieza seleccionando todo
-        connect: true,         // Relleno azul entre puntos
-        range: {
-            'min': minTs,
-            'max': maxTs
-        },
-        step: 86400000, // Pasos de 1 día (en ms)
-        
-        // Formateador: Qué se muestra en la etiqueta flotante
+        start: [minTs, maxTs],
+        connect: true,
+        range: { 'min': minTs, 'max': maxTs },
+        step: 86400000, 
         tooltips: [
-            {
-                to: function(val) {
-                    const d = new Date(parseInt(val));
-                    return d.toLocaleDateString('es-ES'); // "17/02/2025"
-                }
-            },
-            {
-                to: function(val) {
-                    const d = new Date(parseInt(val));
-                    return d.toLocaleDateString('es-ES');
-                }
-            }
+            { to: (val) => new Date(parseInt(val)).toLocaleDateString('es-ES') },
+            { to: (val) => new Date(parseInt(val)).toLocaleDateString('es-ES') }
         ]
     });
 
-    // 4. Conectar con el sistema de filtrado
-    // Evento 'set': Se dispara solo cuando SUELTAS el slider (mejora rendimiento)
     slider.noUiSlider.on('set', function (values) {
-        // Convertir a YYYY-MM-DD para que el filtro de JS lo entienda
         const start = new Date(parseInt(values[0])).toISOString().split('T')[0];
         const end = new Date(parseInt(values[1])).toISOString().split('T')[0];
-
         document.getElementById('startDate').value = start;
         document.getElementById('endDate').value = end;
-        
-        // Actualizar gráficos automáticamente
         renderAllCharts();
     });
     
-    // Inicializar inputs ocultos
     document.getElementById('startDate').value = feMinStr;
     document.getElementById('endDate').value = feMaxStr;
 }
 
 function setupDepths() {
-    // 1. Obtener lista de profundidades únicas
     const uniqueProfs = [...new Set(currentData.map(item => parseFloat(item.profundidad)))].sort((a,b) => a - b);
-    
     if (uniqueProfs.length === 0) return;
 
     const minProf = uniqueProfs[0];
     const maxProf = uniqueProfs[uniqueProfs.length - 1];
-    
-    // Calculamos el "paso" (step) asumiendo que es regular (ej: cada 0.5m)
-    // Si hay solo 1 profundidad, el paso es 0
-    let stepVal = 0.5; 
-    if (uniqueProfs.length > 1) {
-        stepVal = uniqueProfs[1] - uniqueProfs[0];
-    }
+    let stepVal = uniqueProfs.length > 1 ? (uniqueProfs[1] - uniqueProfs[0]) : 0.5;
 
     const sliderElement = document.getElementById('depthSlider');
     const hiddenInput = document.getElementById('profSelect');
+    if(!sliderElement) return;
 
-    // 2. Destruir si ya existe (para evitar duplicados al cambiar de sensor)
-    if (sliderElement.noUiSlider) {
-        sliderElement.noUiSlider.destroy();
-    }
+    if (sliderElement.noUiSlider) sliderElement.noUiSlider.destroy();
 
-    // 3. Crear el Slider de Profundidad
     noUiSlider.create(sliderElement, {
-        start: [minProf],     // Empieza en la mínima
-        connect: 'lower',     // Rellena la barra desde la izquierda (estilo volumen)
-        range: {
-            'min': minProf,
-            'max': maxProf
-        },
-        step: stepVal,        // Salta de 0.5 en 0.5 (o lo que tenga el sensor)
-        
-        // Formateador: Añade la "m" de metros al tooltip
-        tooltips: {
-            to: function(val) {
-                return parseFloat(val).toFixed(1) + " m";
-            }
-        },
-        // Pips: (Opcional) Si quieres rayitas debajo, añade pips: {mode: 'steps', density: 10}
+        start: [minProf],
+        connect: 'lower',
+        range: { 'min': minProf, 'max': maxProf },
+        step: stepVal,
+        tooltips: { to: (val) => parseFloat(val).toFixed(1) + " m" }
     });
 
-    // 4. Lógica de actualización
     sliderElement.noUiSlider.on('update', function (values) {
-        const selectedDepth = parseFloat(values[0]);
-        
-        // Actualizar el input oculto
-        hiddenInput.value = selectedDepth;
-        
-        // Actualizar textos en la interfaz
-        document.getElementById('txtProfTime').textContent = selectedDepth;
-        document.getElementById('txtProfPolar').textContent = selectedDepth;
+        hiddenInput.value = parseFloat(values[0]);
+        const txtTime = document.getElementById('txtProfTime');
+        const txtPolar = document.getElementById('txtProfPolar');
+        if(txtTime) txtTime.textContent = parseFloat(values[0]);
+        if(txtPolar) txtPolar.textContent = parseFloat(values[0]);
     });
 
-    // 5. Solo redibujar gráficos pesados al soltar el ratón
-    sliderElement.noUiSlider.on('change', function () {
-        renderAllCharts();
-    });
-
-    // Inicialización manual del valor
+    sliderElement.noUiSlider.on('change', function () { renderAllCharts(); });
     hiddenInput.value = minProf;
 }
 
 function getFilteredData() {
     const start = document.getElementById('startDate').value;
     const end = document.getElementById('endDate').value;
-    
     if(!start || !end) return currentData;
-
     return currentData.filter(d => d.fecha_str >= start && d.fecha_str <= end);
 }
 
@@ -224,58 +218,60 @@ function getFilteredData() {
 
 function updateSensorInfo() {
     const sel = document.getElementById('sensorSelect');
+    if(!sel || sel.selectedIndex < 0) return;
+    
     const opt = sel.options[sel.selectedIndex];
     
-    if(!opt) return;
+    const latRaw = String(opt.dataset.lat).replace(',', '.');
+    const lonRaw = String(opt.dataset.lon).replace(',', '.');
 
     currentSensorInfo = {
-        lat: parseFloat(opt.dataset.lat),
-        lon: parseFloat(opt.dataset.lon),
+        lat: parseFloat(latRaw),
+        lon: parseFloat(lonRaw),
         nf: parseFloat(opt.dataset.nf),
         foto: opt.dataset.foto
     };
 
-    // UI Info
-    document.getElementById('sensorInfoBox').style.display = 'block';
-    document.getElementById('infoNombre').textContent = opt.text;
-    document.getElementById('infoCoords').textContent = `${currentSensorInfo.lat}, ${currentSensorInfo.lon}`;
+    const infoBox = document.getElementById('sensorInfoBox');
+    if(infoBox) infoBox.style.display = 'block';
+    
+    const infoNombre = document.getElementById('infoNombre');
+    const infoCoords = document.getElementById('infoCoords');
+    if(infoNombre) infoNombre.textContent = opt.text;
+    if(infoCoords) infoCoords.textContent = `${currentSensorInfo.lat.toFixed(4)}, ${currentSensorInfo.lon.toFixed(4)}`;
 
-    // Mapa
-    if(map) {
-        map.setView([currentSensorInfo.lat, currentSensorInfo.lon], 18);
+    if(map && !isNaN(currentSensorInfo.lat)) {
+        map.invalidateSize();
+        map.flyTo([currentSensorInfo.lat, currentSensorInfo.lon], 18);
         if(mapMarker) map.removeLayer(mapMarker);
         mapMarker = L.circleMarker([currentSensorInfo.lat, currentSensorInfo.lon], {
-            radius: 10, color: 'blue', fillOpacity: 0.6
+            radius: 12, color: 'red', fillColor: '#f03', fillOpacity: 0.8
         }).addTo(map);
     }
 
-    // Foto
     const img = document.getElementById('sensorPhoto');
     const txt = document.getElementById('noPhotoText');
-    if(currentSensorInfo.foto && currentSensorInfo.foto !== 'null') {
-        img.src = `static/img/${currentSensorInfo.foto}`;
-        img.style.display = 'block';
-        txt.style.display = 'none';
-    } else {
-        img.style.display = 'none';
-        txt.style.display = 'block';
+    if(img && txt) {
+        if(currentSensorInfo.foto && currentSensorInfo.foto !== 'null' && currentSensorInfo.foto !== '') {
+            img.src = `static/img/${currentSensorInfo.foto}`;
+            img.style.display = 'block';
+            txt.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            txt.style.display = 'block';
+        }
     }
 }
 
 function renderAllCharts() {
     const data = getFilteredData();
-    const profVal = parseFloat(document.getElementById('profSelect').value) || 0;
-
-    // Actualizar etiquetas UI
-    document.getElementById('txtProfTime').textContent = profVal;
-    document.getElementById('txtProfPolar').textContent = profVal;
+    const profInput = document.getElementById('profSelect');
+    const profVal = parseFloat(profInput ? profInput.value : 0) || 0;
 
     // 1. Gráficos de Perfil (A y B)
-    // Ordenamos fechas para saber cuál es la última real
     const dates = [...new Set(data.map(d => d.fecha_str))].sort();
-    const latestDate = dates[dates.length - 1]; // La última fecha
+    const latestDate = dates[dates.length - 1]; 
 
-    // Función auxiliar para formatear fecha visualmente
     const formatDateES = (str) => {
         if(!str) return str;
         const [y, m, d] = str.split('-');
@@ -286,37 +282,17 @@ function renderAllCharts() {
         const traces = [];
         dates.forEach(date => {
             const dateData = data.filter(d => d.fecha_str === date);
-            const isLatest = (date === latestDate); // ¿Es la última?
+            const isLatest = (date === latestDate);
 
             traces.push({
                 x: dateData.map(d => axis === 'A' ? d.valor_a : d.valor_b),
                 y: dateData.map(d => d.profundidad),
-                
-                // AQUÍ ESTÁ EL CAMBIO:
-                // Si es la última -> 'lines+markers' (Línea + Puntos)
-                // Si no -> 'lines' (Solo línea)
                 mode: isLatest ? 'lines+markers' : 'lines',
-                
-                name: formatDateES(date), 
-                
-                // ESTILO DE LÍNEA
-                line: { 
-                    // NO tocamos el 'color' para que siga siendo el automático
-                    // Solo hacemos la última más gorda (3px) y las otras finas (1px)
-                    width: isLatest ? 3 : 1 
-                },
-                
-                // ESTILO DE LOS PUNTOS (Solo saldrán en la última)
-                marker: { 
-                    size: 6,
-                    symbol: 'circle'
-                    // Al no poner color aquí, hereda automáticamente el color de la línea
-                },
-
-                // Que la última se pinte siempre encima de las viejas
-                opacity: isLatest ? 1 : 0.7, 
-
-                showlegend: true,   
+                name: formatDateES(date),
+                line: { width: isLatest ? 3 : 1 },
+                marker: { size: 6, symbol: 'circle' },
+                opacity: isLatest ? 1 : 0.7,
+                showlegend: true,
                 hovertemplate: `<b>${formatDateES(date)}</b><br>Prof: %{y:.1f}m<br>Desp: %{x:.2f}mm<extra></extra>`
             });
         });
@@ -325,185 +301,82 @@ function renderAllCharts() {
 
     const layoutProfile = (title) => ({
         title: title,
-        height: 900,
-        yaxis: { title: 'Profundidad (m)', autorange: 'reversed' }, 
+        yaxis: { title: 'Profundidad (m)', autorange: 'reversed' },
         xaxis: { title: 'Desplazamiento (mm)', range: [-20, 20] },
         shapes: [
             { type: 'rect', x0: -20, x1: -10, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below' },
             { type: 'rect', x0: 10, x1: 20, y0: 0, y1: 1, xref: 'x', yref: 'paper', fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below' },
-            { 
-                type: 'line', 
-                x0: 0, x1: 1, xref: 'paper', 
-                y0: currentSensorInfo.nf, y1: currentSensorInfo.nf, yref: 'y',
-                line: { color: 'blue', dash: 'dash', width: 2 }
-            }
+            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: currentSensorInfo.nf, y1: currentSensorInfo.nf, yref: 'y', line: { color: 'blue', dash: 'dash', width: 2 } }
         ],
-        annotations: [
-            { x: 0.95, xref: 'paper', y: currentSensorInfo.nf, yref: 'y', text: 'NF', showarrow: false, font: {color: 'blue'} }
-        ],
-        margin: {t: 40, b: 40, l: 50, r: 20},
-        hovermode: 'closest' // <--- CAMBIO CLAVE 2: Solo muestra el dato que tocas
+        hovermode: 'closest'
     });
 
     Plotly.newPlot('chartA', makeProfileTrace('A'), layoutProfile('Eje A'));
     Plotly.newPlot('chartB', makeProfileTrace('B'), layoutProfile('Eje B'));
 
-    // 2. Serie Temporal (Fijando Profundidad)
+    // 2. Serie Temporal
     const dataProf = data.filter(d => parseFloat(d.profundidad) === profVal);
     
-    const traceTimeA = {
-        x: dataProf.map(d => d.fecha_str),
-        y: dataProf.map(d => d.valor_a),
-        name: 'Eje A', type: 'scatter', mode: 'lines+markers', marker: {color: COLOR_A}
-    };
-    const traceTimeB = {
-        x: dataProf.map(d => d.fecha_str),
-        y: dataProf.map(d => d.valor_b),
-        name: 'Eje B', type: 'scatter', mode: 'lines+markers', marker: {color: COLOR_B}
-    };
+    const traceTimeA = { x: dataProf.map(d => d.fecha_str), y: dataProf.map(d => d.valor_a), name: 'Eje A', type: 'scatter', mode: 'lines+markers', marker: {color: COLOR_A} };
+    const traceTimeB = { x: dataProf.map(d => d.fecha_str), y: dataProf.map(d => d.valor_b), name: 'Eje B', type: 'scatter', mode: 'lines+markers', marker: {color: COLOR_B} };
 
-    // --- AQUÍ ESTÁ EL CAMBIO PARA EL RANGO Y UMBRALES ---
     const layoutTime = {
         title: `Serie Temporal - ${profVal}m`,
-        yaxis: { 
-            title: 'Desplazamiento (mm)',
-            range: [-20, 20] // <--- 1. RANGO FIJO
-        },
-        // <--- 2. UMBRALES VISUALES
+        yaxis: { title: 'Desplazamiento (mm)', range: [-20, 20] },
         shapes: [
-            // Zona de Advertencia Superior (+10 a +20)
-            {
-                type: 'rect',
-                xref: 'paper', x0: 0, x1: 1, // Todo el ancho del gráfico
-                y0: 10, y1: 20,              // Altura
-                fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below'
-            },
-            // Zona de Advertencia Inferior (-10 a -20)
-            {
-                type: 'rect',
-                xref: 'paper', x0: 0, x1: 1,
-                y0: -20, y1: -10,
-                fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below'
-            },
-            // Línea discontinua en +10
-            {
-                type: 'line',
-                xref: 'paper', x0: 0, x1: 1,
-                y0: 10, y1: 10,
-                line: { color: '#ffbd2e', dash: 'dash', width: 1 }
-            },
-            // Línea discontinua en -10
-            {
-                type: 'line',
-                xref: 'paper', x0: 0, x1: 1,
-                y0: -10, y1: -10,
-                line: { color: '#ffbd2e', dash: 'dash', width: 1 }
-            }
+            { type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: 10, y1: 20, fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below' },
+            { type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: -20, y1: -10, fillcolor: 'yellow', opacity: 0.15, line: {width: 0}, layer: 'below' },
+            { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 10, y1: 10, line: { color: '#ffbd2e', dash: 'dash', width: 1 } },
+            { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: -10, y1: -10, line: { color: '#ffbd2e', dash: 'dash', width: 1 } }
         ],
         hovermode: 'closest'
     };
-
     Plotly.newPlot('chartTime', [traceTimeA, traceTimeB], layoutTime);
 
-    // 3. Polar (Fijando Profundidad)
+    // 3. Polar
     const rVals = dataProf.map(d => Math.sqrt(d.valor_a**2 + d.valor_b**2));
     const thetaVals = dataProf.map(d => Math.atan2(d.valor_b, d.valor_a) * (180/Math.PI));
+    
+    Plotly.newPlot('chartPolar', [
+        { type: 'scatterpolar', r: new Array(360).fill(10), theta: Array.from({length:360}, (_,i)=>i), mode: 'lines', line: {color: 'yellow'}, name: 'Umbral', hoverinfo: 'skip' },
+        { type: 'scatterpolar', r: rVals, theta: thetaVals, mode: 'markers+lines', marker: { color: COLOR_A, size: 6 }, name: 'Lectura' }
+    ], {
+        title: 'Desplazamiento Polar (mm)',
+        polar: { radialaxis: { range: [0, 20] } },
+        images: [{ source: "static/img/Polar.png", xref: "paper", yref: "paper", x: 0.5, y: 0.5, sizex: 1.1, sizey: 1.1, xanchor: "center", yanchor: "middle", layer: "below", opacity: 0.5 }]
+    });
 
-    const tracePolar = {
-        type: 'scatterpolar',
-        r: rVals,
-        theta: thetaVals,
-        mode: 'markers+lines',
-        marker: { color: COLOR_A, size: 6 },
-        name: 'Lectura',
-        showlegend: true // También ocultamos leyenda aquí si molesta
-    };
-
-    const traceAmber = {
-        type: 'scatterpolar', r: new Array(360).fill(10), theta: Array.from({length:360}, (_,i)=>i),
-        mode: 'lines', line: {color: 'yellow'}, name: 'Umbral ámbar', hoverinfo: 'skip',
-        showlegend: true // Esta sí la dejamos para saber qué es la línea amarilla
-    };
-
-    const polarLayout = {
-        title: 'Desplazamiento polar (mm)',
-        polar: { 
-            radialaxis: { range: [0, 20] },
-            domain: { x: [0, 1], y: [0, 1] }
-        },
-        images: [
-            {
-                source: "static/img/Polar.png",
-                xref: "paper", yref: "paper",
-                x: 0.5, y: 0.5,
-                sizex: 1.1, sizey: 1.1,
-                xanchor: "center", yanchor: "middle",
-                layer: "below",
-                opacity: 0.5
-            }
-        ]
-    };
-
-    Plotly.newPlot('chartPolar', [traceAmber, tracePolar], polarLayout);
-
-    // 4. Modelo 3D
-    const trace3D = {
-        x: data.map(d => d.valor_a),
-        y: data.map(d => d.valor_b),
-        z: data.map(d => d.profundidad),
-        mode: 'markers',
-        marker: { size: 3, color: COLOR_A },
-        type: 'scatter3d',
-        showlegend: true
-    };
-
-    Plotly.newPlot('chart3D', [trace3D], {
+    // 4. 3D
+    Plotly.newPlot('chart3D', [{
+        x: data.map(d => d.valor_a), y: data.map(d => d.valor_b), z: data.map(d => d.profundidad),
+        mode: 'markers', marker: { size: 3, color: COLOR_A }, type: 'scatter3d'
+    }], {
         title: 'Modelo 3D',
-        scene: {
-            xaxis: {title: 'Eje A (mm)', range: [-20, 20]},
-            yaxis: {title: 'Eje B (mm)', range: [-20, 20]},
-            zaxis: {title: 'Profundidad (m)', autorange: 'reversed'}
-        },
+        scene: { xaxis: {title: 'A', range:[-20,20]}, yaxis: {title: 'B', range:[-20,20]}, zaxis: {title: 'Prof', autorange:'reversed'} },
         height: 600
     });
 }
 
-// --- UTILIDADES ---
 function initMap() {
-    console.log("Iniciando mapa..."); // Mira si esto sale en la consola (F12)
-
-    // 1. Limpiar mapa previo
     if (map) { map.remove(); map = null; }
-
-    // 2. Crear mapa
     map = L.map('map').setView([40.416, -3.703], 6);
-
-    // 3. USAR OPENSTREETMAP (El más compatible del mundo)
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    // 4. FORZAR REAJUSTE
-    setTimeout(() => { 
-        map.invalidateSize(); 
-        console.log("Mapa reajustado");
-    }, 1000);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    setTimeout(() => { map.invalidateSize(); }, 1000);
 }
+
 async function handleUpload(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
-    formData.append('sensor_id', document.getElementById('sensorSelect').value);
+    const sel = document.getElementById('sensorSelect');
+    if(!sel) return;
+    formData.append('sensor_id', sel.value);
 
     showLoading(true);
     try {
-        const res = await axios.post('api.php?action=upload', formData, {
-            headers: {'Content-Type': 'multipart/form-data'}
-        });
-        
+        const res = await axios.post('api.php?action=upload', formData, { headers: {'Content-Type': 'multipart/form-data'} });
         if(res.data.success) {
             Swal.fire('Éxito', res.data.message, 'success');
-            updateDashboard(); // Refrescar datos
+            updateDashboard();
         } else {
             Swal.fire('Error', res.data.message, 'error');
         }
@@ -515,5 +388,6 @@ async function handleUpload(e) {
 }
 
 function showLoading(show) {
-    document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+    const overlay = document.getElementById('loadingOverlay');
+    if(overlay) overlay.style.display = show ? 'flex' : 'none';
 }

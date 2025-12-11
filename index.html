@@ -99,7 +99,25 @@
         </div>
 
         <div class="col-md-9 col-lg-10 main-container">
-            <h1 class="mb-4">Dashboard inclinómetros</h1>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+        
+                <h1 class="mb-0" style="font-size: 2rem;">Dashboard inclinómetros</h1>
+                
+                <div class="user-header shadow-sm d-flex align-items-center gap-3 bg-white">
+                    
+                    <div class="user-info text-end" style="line-height: 1.2;">
+                        <span class="d-block text-muted" style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Conectado como</span>
+                        <span id="userDisplay" style="font-size: 0.9rem; font-weight: 700; color: #334155;">Cargando...</span>
+                    </div>
+                    
+                    <div class="vr" style="height: 30px; width: 1px; background: #e2e8f0;"></div> 
+                    
+                    <button id="btnExit" class="btn btn-sm btn-outline-danger fw-bold" style="font-size: 0.75rem; padding: 5px 12px; border-radius: 6px;">
+                        Salir
+                    </button>
+                </div>
+
+            </div>
             
             <div id="alertContainer"></div>
 
@@ -126,12 +144,12 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="vis-container">
-                        <div id="chartA" style="width:100%; height:100%;"></div>
+                        <div id="chartA" style="width:100%; height:800px;"></div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="vis-container">
-                        <div id="chartB" style="width:100%; height:100%;"></div>
+                        <div id="chartB" style="width:100%; height:800px;"></div>
                     </div>
                 </div>
             </div>

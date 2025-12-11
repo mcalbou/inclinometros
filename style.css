@@ -511,3 +511,55 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
     border-style: solid;
     border-color: #cbd5e1 transparent transparent transparent; /* Apunta abajo */
 }
+
+/* ================= CABECERA DE USUARIO (TOP RIGHT) ================= */
+
+.user-header {
+    /* Forma de Píldora */
+    border-radius: 50px !important; 
+    padding: 6px 10px 6px 20px !important; /* Más espacio a la izq, menos a la der (donde el botón) */
+    
+    /* Borde y Fondo */
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    
+    /* Asegurar alineación horizontal */
+    display: flex !important;
+    align-items: center !important;
+    
+    /* Animación suave */
+    transition: all 0.2s ease-in-out;
+}
+
+/* Efecto al pasar el ratón: Sube un poquito y da sombra */
+.user-header:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    border-color: #cbd5e1;
+}
+
+/* Ajuste fino para móviles (por si acaso) */
+@media (max-width: 768px) {
+    .user-header {
+        padding: 5px 10px !important;
+    }
+    .user-info span:first-child { display: none !important; } /* Ocultar "CONECTADO COMO" en móvil */
+}
+.user-info {
+    line-height: 1.2;
+}
+
+/* Línea vertical separadora */
+.vr {
+    width: 1px;
+    background-color: #cbd5e1;
+    opacity: 1;
+    height: 25px;
+    align-self: center;
+}
+
+/* Ajuste del título principal para que no choque */
+h1 {
+    font-size: 1.8rem; /* Un poco más pequeño para equilibrar */
+    margin-bottom: 0 !important; /* El margen lo maneja el contenedor padre */
+}
