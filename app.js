@@ -428,12 +428,11 @@ function renderAllCharts() {
     const thetaVals = dataProf.map(d => Math.atan2(d.valor_b, d.valor_a) * (180/Math.PI));
     
     Plotly.newPlot('chartPolar', [
-        { type: 'scatterpolar', r: new Array(360).fill(10), theta: Array.from({length:360}, (_,i)=>i), mode: 'lines', line: {color: 'yellow'}, name: 'Umbral', hoverinfo: 'skip' },
+        { type: 'scatterpolar', r: new Array(360).fill(10), theta: Array.from({length:360}, (_,i)=>i), mode: 'lines', line: {color: '#e8e01e'}, name: 'Umbral', hoverinfo: 'skip' },
         { type: 'scatterpolar', r: rVals, theta: thetaVals, mode: 'markers+lines', marker: { color: COLOR_A, size: 6 }, name: 'Lectura' }
     ], {
         title: 'Desplazamiento Polar (mm)',
-        polar: { radialaxis: { range: [0, 20] } },
-        images: [{ source: "static/img/Polar.png", xref: "paper", yref: "paper", x: 0.5, y: 0.5, sizex: 1.1, sizey: 1.1, xanchor: "center", yanchor: "middle", layer: "below", opacity: 0.5 }]
+        polar: { radialaxis: { range: [0, 20] } }
     });
 
     // 4. 3D
