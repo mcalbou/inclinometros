@@ -79,7 +79,8 @@ if (!isset($_SESSION['user_id'])) {
 
 // A. OBTENER SENSORES (Todos los roles pueden ver)
 if ($action === 'get_sensors') {
-    $stmt = $pdo->query("SELECT * FROM sensores ORDER BY nombre");
+    // Ordenamos por 'lugar' (descendente para que Colector salga antes o después según prefieras) y luego nombre
+    $stmt = $pdo->query("SELECT * FROM sensores ORDER BY lugar DESC, nombre ASC");
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     exit;
 }

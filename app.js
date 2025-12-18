@@ -153,23 +153,62 @@ async function loadSensors() {
     try {
         const res = await axios.get('api.php?action=get_sensors');
         const sensores = res.data;
-        // Ojo: al haber clonado el nodo antes, buscamos el elemento fresco del DOM
         const sel = document.getElementById('sensorSelect');
         
         if(sel) {
-            sel.innerHTML = '';
+            sel.innerHTML = ''; 
+
+            // --- 1. AÑADIR OPCIÓN POR DEFECTO ---
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = ""; // Valor vacío
+            defaultOpt.textContent = "-- Selecciona un sensor --";
+            defaultOpt.selected = true; // Marcada al inicio
+            defaultOpt.disabled = true; // No se puede volver a elegir una vez cambias
+            sel.appendChild(defaultOpt);
+
+            // 2. Crear Grupos
+            const groupCanal = document.createElement('optgroup');
+            groupCanal.label = "--- CANAL ---";
+            groupCanal.style.color = "#1f77b4";
+            groupCanal.style.fontWeight = "bold";
+
+            const groupColector = document.createElement('optgroup');
+            groupColector.label = "--- COLECTOR ---";
+            groupColector.style.color = "#ff7f0e"; 
+            groupColector.style.fontWeight = "bold";
+
+            // 3. Clasificar sensores
             sensores.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
                 opt.textContent = s.nombre;
+                opt.style.color = "#333";
+                opt.style.fontWeight = "normal";
+                
+                // Datos extra
                 opt.dataset.lat = s.latitud;
                 opt.dataset.lon = s.longitud;
                 opt.dataset.nf = s.nf;
                 opt.dataset.foto = s.foto_path;
-                sel.appendChild(opt);
+
+                // Clasificación por columna 'lugar'
+                const lugar = (s.lugar || 'Canal').toLowerCase().trim();
+
+                if (lugar === 'colector') {
+                    groupColector.appendChild(opt);
+                } else {
+                    groupCanal.appendChild(opt);
+                }
             });
-            // Cargar el primero por defecto
-            if(sensores.length > 0) updateDashboard();
+
+            // 4. Añadir grupos al selector
+            if (groupCanal.children.length > 0) sel.appendChild(groupCanal);
+            if (groupColector.children.length > 0) sel.appendChild(groupColector);
+
+            // --- CAMBIO IMPORTANTE: ---
+            // Hemos BORRADO las líneas que seleccionaban el primero (sel.value = ...)
+            // y la línea que llamaba a updateDashboard().
+            // Así el dashboard se queda "quieto" hasta que el usuario elija algo.
         }
     } catch (err) {
         console.error("Error cargando sensores", err);
