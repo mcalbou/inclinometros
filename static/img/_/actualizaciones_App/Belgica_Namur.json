@@ -1,0 +1,524 @@
+{
+  "idEscena": "Belgica_Namur",
+  "rutaIndexUnity": "",
+  "nombreParaTitulo": "Cathédrale Saint-Aubain, Namur – Belgique",
+  "configuracionSensores": {
+    "variablesMap": {
+      "TH": [
+        { "nombre": "Temperatura", "nombreKey": "temperature", "unidad": "°C", "sufijo": "T" },
+        { "nombre": "Humedad", "nombreKey": "humidity", "unidad": "%RH", "sufijo": "H" }
+      ],
+      "CL": [
+        { "nombre": "Inclinacion A", "nombreKey": "inclinationA", "unidad": "º", "sufijo": "A" },
+        { "nombre": "Inclinacion B", "nombreKey": "inclinationB", "unidad": "º", "sufijo": "B" }
+      ],
+      "CA": [
+        { "nombre": "Desplazamiento", "nombreKey": "displacement", "unidad": "mm", "sufijo": null }
+      ]
+    },
+    "colorMap": {
+      "TH": "#e74c3c",
+      "CL": "#3498db",
+      "CA": "#2ecc71",
+      "default": "#95a5a6"
+    }
+  },
+  "planos2D": [
+    {
+      "id": "namur_planta_general",
+      "titulo": "Plan général",
+      "rutaImagen": "planos/planos_namurFR/planta.png",
+      "puntosInteres": [
+        {
+          "type": "group",
+          "x": 13.5,
+          "y": 20,
+          "titulo": "Groupe de capteurs 1",
+          "items": [
+            { "id": "CA17", "titulo": "Capteur à câble 17", "datos": "Carrete" },
+            { "id": "CA18", "titulo": "Capteur à câble 18", "datos": "Carrete" },
+            { "id": "CA19", "titulo": "Capteur à câble 19", "datos": "Carrete" },
+            { "id": "CA20", "titulo": "Capteur à câble 20", "datos": "Carrete" },
+            { "id": "CL08_A", "titulo": "Capteur CL08_A", "datos": "inclinación A" },
+            { "id": "CL08_B", "titulo": "Capteur CL08_B", "datos": "inclinación B" },
+            { "id": "TH06_T", "titulo": "Capteur TH06_T", "datos": "Temperatura" },
+            { "id": "TH06_H", "titulo": "Capteur TH06_H", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 28.9,
+          "y": 26,
+          "titulo": "Groupe de capteurs 2",
+          "items": [
+            { "id": "CL07_A", "titulo": "Capteur CL07_A", "datos": "inclinación A" },
+            { "id": "CL07_B", "titulo": "Capteur CL07_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 25.5,
+          "y": 14,
+          "titulo": "Groupe de capteurs 3",
+          "items": [
+            { "id": "CA29", "titulo": "Capteur à câble 29", "datos": "Carrete" },
+            { "id": "CA30", "titulo": "Capteur à câble 30", "datos": "Carrete" },
+            { "id": "CA31", "titulo": "Capteur à câble 31", "datos": "Carrete" },
+            { "id": "CA32", "titulo": "Capteur à câble 32", "datos": "Carrete" },
+            { "id": "TH10_T", "titulo": "Capteur TH10_T", "datos": "Temperatura" },
+            { "id": "TH10_H", "titulo": "Capteur TH10_H", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 32,
+          "y": 9.5,
+          "titulo": "Groupe de capteurs 4",
+          "items": [
+            { "id": "CL12_A", "titulo": "Capteur CL12_A", "datos": "inclinación A" },
+            { "id": "CL12_B", "titulo": "Capteur CL12_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 62,
+          "y": 8.5,
+          "titulo": "Groupe de capteurs 5",
+          "items": [
+            { "id": "CL10_A", "titulo": "Capteur CL10_A", "datos": "inclinación A" },
+            { "id": "CL10_B", "titulo": "Capteur CL10_B", "datos": "inclinación B" },
+            { "id": "TH08_T", "titulo": "Capteur TH08_T", "datos": "Temperatura" },
+            { "id": "TH08_H", "titulo": "Capteur TH08_H", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 68,
+          "y": 14,
+          "titulo": "Groupe de capteurs 6",
+          "items": [
+            { "id": "CA23", "titulo": "Capteur à câble 23", "datos": "Carrete" },
+            { "id": "CA24", "titulo": "Capteur à câble 24", "datos": "Carrete" },
+            { "id": "CA25", "titulo": "Capteur à câble 25", "datos": "Carrete" },
+            { "id": "CA26", "titulo": "Capteur à câble 26", "datos": "Carrete" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 67,
+          "y": 20,
+          "titulo": "Groupe de capteurs 7",
+          "items": [
+            { "id": "CA15", "titulo": "Capteur à câble 15", "datos": "Carrete" },
+            { "id": "CA16", "titulo": "Capteur à câble 16", "datos": "Carrete" },
+            { "id": "CL06_A", "titulo": "Capteur CL06_A", "datos": "inclinación A" },
+            { "id": "CL06_B", "titulo": "Capteur CL06_B", "datos": "inclinación B" },
+            { "id": "TH05_T", "titulo": "Capteur TH05_T", "datos": "Temperatura" },
+            { "id": "TH05_H", "titulo": "Capteur TH05_H", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 77,
+          "y": 23.8,
+          "titulo": "Groupe de capteurs 8",
+          "items": [
+            { "id": "CA11", "titulo": "Capteur à câble 11", "datos": "Carrete" },
+            { "id": "CA12", "titulo": "Capteur à câble 12", "datos": "Carrete" },
+            { "id": "CA13", "titulo": "Capteur à câble 13", "datos": "Carrete" },
+            { "id": "CA14", "titulo": "Capteur à câble 14", "datos": "Carrete" },
+            { "id": "CL05_A", "titulo": "Capteur CL05_A", "datos": "inclinación A" },
+            { "id": "CL05_B", "titulo": "Capteur CL05_B", "datos": "inclinación B" },
+            { "id": "TH07_T", "titulo": "Capteur TH07_T", "datos": "Temperatura" },
+            { "id": "TH07_H", "titulo": "Capteur TH07_H", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 76.5,
+          "y": 59,
+          "titulo": "Groupe de capteurs 10",
+          "items": [
+            { "id": "CA01", "titulo": "Capteur à câble 01", "datos": "Carrete" },
+            { "id": "CA02", "titulo": "Capteur à câble 02", "datos": "Carrete" },
+            { "id": "CA03", "titulo": "Capteur à câble 03", "datos": "Carrete" },
+            { "id": "CA04", "titulo": "Capteur à câble 04", "datos": "Carrete" },
+            { "id": "CL01_A", "titulo": "Capteur CL01_A", "datos": "inclinación A" },
+            { "id": "CL01_B", "titulo": "Capteur CL01_B", "datos": "inclinación B" },
+            { "id": "TH01_T", "titulo": "Capteur TH01_T", "datos": "Temperatura" },
+            { "id": "TH01_H", "titulo": "Capteur TH01_H", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 66,
+          "y": 62,
+          "titulo": "Groupe de capteurs 11",
+          "items": [
+            { "id": "CA05", "titulo": "Capteur à câble 05", "datos": "Carrete" },
+            { "id": "CA06", "titulo": "Capteur à câble 06", "datos": "Carrete" },
+            { "id": "CL02_A", "titulo": "Capteur CL02_A", "datos": "inclinación A" },
+            { "id": "CL02_B", "titulo": "Capteur CL02_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 63.7,
+          "y": 69.5,
+          "titulo": "Groupe de capteurs 12",
+          "items": [
+            { "id": "CA21", "titulo": "Capteur à câble 21", "datos": "Carrete" },
+            { "id": "CA22", "titulo": "Capteur à câble 22", "datos": "Carrete" },
+            { "id": "TH04_T", "titulo": "Capteur TH04_T", "datos": "Temperatura" },
+            { "id": "TH04_H", "titulo": "Capteur TH04_H", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 60.2,
+          "y": 80,
+          "titulo": "Groupe de capteurs 13",
+          "items": [
+            { "id": "CL09_A", "titulo": "Capteur CL09_A", "datos": "inclinación A" },
+            { "id": "CL09_B", "titulo": "Capteur CL09_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 33.5,
+          "y": 80,
+          "titulo": "Groupe de capteurs 14",
+          "items": [
+            { "id": "CL11_A", "titulo": "Capteur CL11_A", "datos": "inclinación A" },
+            { "id": "CL11_B", "titulo": "Capteur CL11_B", "datos": "inclinación B" },
+            { "id": "TH09_T", "titulo": "Capteur TH09_T", "datos": "Temperatura" },
+            { "id": "TH09_H", "titulo": "Capteur TH09_H", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 28.2,
+          "y": 71.5,
+          "titulo": "Groupe de capteurs 15",
+          "items": [
+            { "id": "CA27", "titulo": "Capteur à câble 27", "datos": "Carrete" },
+            { "id": "CA28", "titulo": "Capteur à câble 28", "datos": "Carrete" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 22,
+          "y": 65.7,
+          "titulo": "Groupe de capteurs 16",
+          "items": [
+            { "id": "TH02_T", "titulo": "Capteur TH02_T", "datos": "Temperatura" },
+            { "id": "TH02_H", "titulo": "Capteur TH02_H", "datos": "Humedad" },
+            { "id": "CL03_A", "titulo": "Capteur CL03_A", "datos": "inclinación A" },
+            { "id": "CL03_B", "titulo": "Capteur CL03_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 15,
+          "y": 59.5,
+          "titulo": "Groupe de capteurs 17",
+          "items": [
+            { "id": "CA07", "titulo": "Capteur à câble 07", "datos": "Carrete" },
+            { "id": "CA08", "titulo": "Capteur à câble 08", "datos": "Carrete" },
+            { "id": "CA09", "titulo": "Capteur à câble 09", "datos": "Carrete" },
+            { "id": "CA10", "titulo": "Capteur à câble 10", "datos": "Carrete" },
+            { "id": "CL04_A", "titulo": "Capteur CL04_A", "datos": "inclinación A" },
+            { "id": "CL04_B", "titulo": "Capteur CL04_B", "datos": "inclinación B" },
+            { "id": "TH03_T", "titulo": "Capteur TH03_T", "datos": "Temperatura" },
+            { "id": "TH03_H", "titulo": "Capteur TH03_H", "datos": "Humedad" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "namur_corteBB",
+      "titulo": "Capteurs – coupe B-B",
+      "rutaImagen": "planos/planos_namurFR/corte B-B.png",
+      "puntosInteres": [
+        { "type": "point", "id": "CA01", "x": 20.8, "y": 38.0, "titulo": "Capteur à câble 01", "datos": "Carrete" },
+        { "type": "point", "id": "CA02", "x": 20.8, "y": 57.2, "titulo": "Capteur à câble 02", "datos": "Carrete" },
+        { "type": "point", "id": "CA03", "x": 40.5, "y": 38.0, "titulo": "Capteur à câble 03", "datos": "Carrete" },
+        { "type": "point", "id": "CA04", "x": 40.5, "y": 60.0, "titulo": "Capteur à câble 04", "datos": "Carrete" },
+        { "type": "point", "id": "CA05", "x": 51.6, "y": 38.0, "titulo": "Capteur à câble 05", "datos": "Carrete" },
+        { "type": "point", "id": "CA06", "x": 51.6, "y": 61.3, "titulo": "Capteur à câble 06", "datos": "Carrete" },
+        { "type": "point", "id": "CA07", "x": 66.8, "y": 38.0, "titulo": "Capteur à câble 07", "datos": "Carrete" },
+        { "type": "point", "id": "CA08", "x": 66.8, "y": 57.2, "titulo": "Capteur à câble 08", "datos": "Carrete" },
+        { "type": "point", "id": "CA09", "x": 86.5, "y": 32.8, "titulo": "Capteur à câble 09", "datos": "Carrete" },
+        { "type": "point", "id": "CA10", "x": 86.5, "y": 61.3, "titulo": "Capteur à câble 10", "datos": "Carrete" },
+        {
+          "type": "group",
+          "x": 20.8,
+          "y": 52.8,
+          "titulo": "Capteur TH01",
+          "items": [
+            { "id": "TH01_T", "titulo": "Capteur TH01_Température", "datos": "Temperatura" },
+            { "id": "TH01_H", "titulo": "Capteur TH01_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 55.5,
+          "y": 52.8,
+          "titulo": "Capteur TH02",
+          "items": [
+            { "id": "TH02_T", "titulo": "Capteur TH02_Température", "datos": "Temperatura" },
+            { "id": "TH02_H", "titulo": "Capteur TH02_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 87.3,
+          "y": 53.3,
+          "titulo": "Capteur TH03",
+          "items": [
+            { "id": "TH03_T", "titulo": "Capteur TH03_Température", "datos": "Temperatura" },
+            { "id": "TH03_H", "titulo": "Capteur TH03_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 38.2,
+          "y": 52.0,
+          "titulo": "Capteur CL01",
+          "items": [
+            { "id": "CL01_A", "titulo": "Capteur CL01_A", "datos": "inclinación A" },
+            { "id": "CL01_B", "titulo": "Capteur CL01_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 51.6,
+          "y": 52.7,
+          "titulo": "Capteur CL02",
+          "items": [
+            { "id": "CL02_A", "titulo": "Capteur CL02_A", "datos": "inclinación A" },
+            { "id": "CL02_B", "titulo": "Capteur CL02_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 73.2,
+          "y": 52.7,
+          "titulo": "Capteur CL03",
+          "items": [
+            { "id": "CL03_A", "titulo": "Capteur CL03_A", "datos": "inclinación A" },
+            { "id": "CL03_B", "titulo": "Capteur CL03_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 85.5,
+          "y": 38.9,
+          "titulo": "Capteur CL04",
+          "items": [
+            { "id": "CL04_A", "titulo": "Capteur CL04_A", "datos": "inclinación A" },
+            { "id": "CL04_B", "titulo": "Capteur CL04_B", "datos": "inclinación B" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "namur_corteDD",
+      "titulo": "Capteurs – coupe D-D",
+      "rutaImagen": "planos/planos_namurFR/corte D-D.png",
+      "puntosInteres": [
+        { "type": "point", "id": "CA11", "x": 77.8, "y": 32.7, "titulo": "Capteur à câble 11", "datos": "Carrete" },
+        { "type": "point", "id": "CA12", "x": 77.8, "y": 61.5, "titulo": "Capteur à câble 12", "datos": "Carrete" },
+        { "type": "point", "id": "CA13", "x": 58.1, "y": 38.0, "titulo": "Capteur à câble 13", "datos": "Carrete" },
+        { "type": "point", "id": "CA14", "x": 58.1, "y": 57.2, "titulo": "Capteur à câble 14", "datos": "Carrete" },
+        { "type": "point", "id": "CA15", "x": 47.0, "y": 38.0, "titulo": "Capteur à câble 15", "datos": "Carrete" },
+        { "type": "point", "id": "CA16", "x": 47.0, "y": 62.0, "titulo": "Capteur à câble 16", "datos": "Carrete" },
+        { "type": "point", "id": "CA17", "x": 32.0, "y": 38.0, "titulo": "Capteur à câble 17", "datos": "Carrete" },
+        { "type": "point", "id": "CA18", "x": 32.0, "y": 62.0, "titulo": "Capteur à câble 18", "datos": "Carrete" },
+        { "type": "point", "id": "CA19", "x": 12.0, "y": 38.0, "titulo": "Capteur à câble 19", "datos": "Carrete" },
+        { "type": "point", "id": "CA20", "x": 12.0, "y": 57.2, "titulo": "Capteur à câble 20", "datos": "Carrete" },
+        {
+          "type": "group",
+          "x": 46.8,
+          "y": 52.3,
+          "titulo": "Capteur TH05",
+          "items": [
+            { "id": "TH05_T", "titulo": "Capteur TH05_Température", "datos": "Temperatura" },
+            { "id": "TH05_H", "titulo": "Capteur TH05_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 11.8,
+          "y": 52.3,
+          "titulo": "Capteur TH06",
+          "items": [
+            { "id": "TH06_T", "titulo": "Capteur TH06_Température", "datos": "Temperatura" },
+            { "id": "TH06_H", "titulo": "Capteur TH06_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 78.1,
+          "y": 52.9,
+          "titulo": "Capteur TH04",
+          "items": [
+            { "id": "TH04_T", "titulo": "Capteur TH04_Température", "datos": "Temperatura" },
+            { "id": "TH04_H", "titulo": "Capteur TH04_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 77.0,
+          "y": 39.3,
+          "titulo": "Capteur CL05",
+          "items": [
+            { "id": "CL05_A", "titulo": "Capteur CL05_A", "datos": "inclinación A" },
+            { "id": "CL05_B", "titulo": "Capteur CL05_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 64.6,
+          "y": 52.7,
+          "titulo": "Capteur CL06",
+          "items": [
+            { "id": "CL06_A", "titulo": "Capteur CL06_A", "datos": "inclinación A" },
+            { "id": "CL06_B", "titulo": "Capteur CL06_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 41.2,
+          "y": 52.9,
+          "titulo": "Capteur CL07",
+          "items": [
+            { "id": "CL07_A", "titulo": "Capteur CL07_A", "datos": "inclinación A" },
+            { "id": "CL07_B", "titulo": "Capteur CL07_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 30.0,
+          "y": 52.3,
+          "titulo": "Capteur CL08",
+          "items": [
+            { "id": "CL08_A", "titulo": "Capteur CL08_A", "datos": "inclinación A" },
+            { "id": "CL08_B", "titulo": "Capteur CL08_B", "datos": "inclinación B" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "namur_corte44",
+      "titulo": "Capteurs – coupe 4-4",
+      "rutaImagen": "planos/planos_namurFR/corte 4-4.png",
+      "puntosInteres": [
+        { "type": "point", "id": "CA21", "x": 74.6, "y": 33.0, "titulo": "Capteur à câble 21", "datos": "Carrete" },
+        { "type": "point", "id": "CA22", "x": 74.6, "y": 57.5, "titulo": "Capteur à câble 22", "datos": "Carrete" },
+        { "type": "point", "id": "CA23", "x": 51.1, "y": 33.0, "titulo": "Capteur à câble 23", "datos": "Carrete" },
+        { "type": "point", "id": "CA24", "x": 51.1, "y": 57.0, "titulo": "Capteur à câble 24", "datos": "Carrete" },
+        { "type": "point", "id": "CA25", "x": 31.0, "y": 33.0, "titulo": "Capteur à câble 25", "datos": "Carrete" },
+        { "type": "point", "id": "CA26", "x": 31.0, "y": 52.4, "titulo": "Capteur à câble 26", "datos": "Carrete" },
+        {
+          "type": "group",
+          "x": 54.5,
+          "y": 48.3,
+          "titulo": "Capteur TH07",
+          "items": [
+            { "id": "TH07_T", "titulo": "Capteur TH07_Température", "datos": "Temperatura" },
+            { "id": "TH07_H", "titulo": "Capteur TH07_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 21.8,
+          "y": 47.5,
+          "titulo": "Capteur TH08",
+          "items": [
+            { "id": "TH08_T", "titulo": "Capteur TH08_Température", "datos": "Temperatura" },
+            { "id": "TH08_H", "titulo": "Capteur TH08_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 81.2,
+          "y": 45.7,
+          "titulo": "Capteur CL09",
+          "items": [
+            { "id": "CL09_A", "titulo": "Capteur CL09_A", "datos": "inclinación A" },
+            { "id": "CL09_B", "titulo": "Capteur CL09_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 24.7,
+          "y": 33.0,
+          "titulo": "Capteur CL10",
+          "items": [
+            { "id": "CL10_A", "titulo": "Capteur CL10_A", "datos": "inclinación A" },
+            { "id": "CL10_B", "titulo": "Capteur CL10_B", "datos": "inclinación B" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "namur_corte66",
+      "titulo": "Capteurs – coupe 6-6",
+      "rutaImagen": "planos/planos_namurFR/corte 6-6.png",
+      "puntosInteres": [
+        { "type": "point", "id": "CA27", "x": 31.9, "y": 33.0, "titulo": "Capteur à câble 27", "datos": "Carrete" },
+        { "type": "point", "id": "CA28", "x": 31.9, "y": 52.2, "titulo": "Capteur à câble 28", "datos": "Carrete" },
+        { "type": "point", "id": "CA29", "x": 55.9, "y": 33.0, "titulo": "Capteur à câble 29", "datos": "Carrete" },
+        { "type": "point", "id": "CA30", "x": 55.8, "y": 52.2, "titulo": "Capteur à câble 30", "datos": "Carrete" },
+        { "type": "point", "id": "CA31", "x": 75.4, "y": 33.0, "titulo": "Capteur à câble 31", "datos": "Carrete" },
+        { "type": "point", "id": "CA32", "x": 75.4, "y": 56.4, "titulo": "Capteur À câble 32", "datos": "Carrete" },
+        {
+          "type": "group",
+          "x": 22.8,
+          "y": 47.5,
+          "titulo": "Capteur TH09",
+          "items": [
+            { "id": "TH09_T", "titulo": "Capteur TH09_Température", "datos": "Temperatura" },
+            { "id": "TH09_H", "titulo": "Capteur TH09_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 53.3,
+          "y": 47.4,
+          "titulo": "Capteur TH10",
+          "items": [
+            { "id": "TH10_T", "titulo": "Capteur TH10_Température", "datos": "Temperatura" },
+            { "id": "TH10_H", "titulo": "Capteur TH10_Humidité", "datos": "Humedad" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 24.7,
+          "y": 33.0,
+          "titulo": "Capteur CL11",
+          "items": [
+            { "id": "CL11_A", "titulo": "Capteur CL11_A", "datos": "inclinación A" },
+            { "id": "CL11_B", "titulo": "Capteur CL11_B", "datos": "inclinación B" }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 82.0,
+          "y": 45.8,
+          "titulo": "Capteur CL12",
+          "items": [
+            { "id": "CL12_A", "titulo": "Capteur CL12_A", "datos": "inclinación A" },
+            { "id": "CL12_B", "titulo": "Capteur CL12_B", "datos": "inclinación B" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "namur_sensores",
+      "titulo": "Tableau d’informations des capteurs",
+      "rutaImagen": "planos/planos_namurFR/hoja_sensores.png"
+    }
+  ]
+}

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel de Administración</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">        
+        <!-- SIDEBAR SIMPLIFICADO -->
+        <div class="col-md-3 col-lg-2 sidebar-container d-flex flex-column">
+            <div class="logo-area text-center mb-4 mt-2">
+                <img src="static/img/logo.png" alt="Logo" class="img-fluid mb-2" style="max-height: 60px;">
+                <h4 style="color: #dc2626; font-weight:800;">ADMIN</h4>
+            </div>
+
+            <div class="control-group">
+                <a href="index.html" class="btn btn-outline-primary w-100 fw-bold mb-3">
+                    &larr; Volver al Dashboard
+                </a>
+                
+                <hr class="my-4 opacity-25">
+                
+                <div class="alert alert-danger small">
+                    <strong>Zona Restringida:</strong><br>
+                    Acciones críticas para la gestión de usuarios y sensores del sistema.
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <div class="col-md-9 col-lg-10 main-container">
+            <h1>Panel de Administración</h1>
+
+            <div class="row">
+                <!-- COLUMNA IZQUIERDA: GESTIÓN DE USUARIOS -->
+                <div class="col-lg-6 mb-4">
+                    <div class="vis-container h-100">
+                        <div class="d-flex align-items-center mb-3">
+                            <span style="font-size: 1.5rem; margin-right: 1px;"></span>
+                            <h3 class="m-0">Nuevo Usuario</h3>
+                        </div>
+                        <p class="text-muted small mb-4">Registra nuevos accesos para clientes o administradores.</p>
+                        
+                        <form id="createUserForm">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-secondary">NOMBRE DE USUARIO</label>
+                                <input type="text" name="new_user" class="form-control" placeholder="Ej: cliente_empresa" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-secondary">CONTRASEÑA</label>
+                                <input type="password" name="new_pass" class="form-control" placeholder="******" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label fw-bold small text-secondary">ROL / PERMISOS</label>
+                                <select name="new_role" class="form-select">
+                                    <option value="cliente">Cliente (Solo ver)</option>
+                                    <option value="admin">Admin (Ver y Subir datos)</option>
+                                    <option value="superAdmin">SuperAdmin (Todo + Crear usuarios)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
+                                CREAR USUARIO
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: GESTIÓN DE SENSORES -->
+                <div class="col-lg-6 mb-4">
+                    <div class="vis-container h-100">
+                        <div class="d-flex align-items-center mb-3">
+                            <span style="font-size: 1.5rem; margin-right: 1px;"></span>
+                            <h3 class="m-0">Nuevo Sensor</h3>
+                        </div>
+                        <p class="text-muted small mb-4">Da de alta un nuevo inclinómetro en el sistema.</p>
+
+                        <form id="createSensorForm">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="createVersionToggle">
+                                <label class="form-check-label fw-bold small text-secondary" for="createVersionToggle">
+                                    Crear nueva versión de un sensor existente
+                                </label>
+                            </div>
+                            <input type="hidden" name="create_version" id="createVersionInput" value="0">
+                            <div id="createVersionFields" class="mb-3 d-none">
+                                <label class="form-label fw-bold small text-secondary">SENSOR BASE</label>
+                                <select id="baseSensorSelect" name="base_sensor_id" class="form-select">
+                                    <option value="">-- Selecciona sensor --</option>
+                                </select>
+                                <div class="form-text small text-muted">
+                                    Se copiarán nombre, coordenadas, NF y ubicación.
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-secondary">NOMBRE DEL SENSOR</label>
+                                <input type="text" name="nombre" class="form-control" placeholder="Ej: IN-25" required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="form-label fw-bold small text-secondary">LATITUD</label>
+                                    <input type="number" step="any" name="latitud" class="form-control" placeholder="39.4..." required>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="form-label fw-bold small text-secondary">LONGITUD</label>
+                                    <input type="number" step="any" name="longitud" class="form-control" placeholder="-0.3..." required>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="form-label fw-bold small text-secondary">NIVEL FREAT. (NF)</label>
+                                    <input type="number" step="any" name="nf" class="form-control" value="0">
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="form-label fw-bold small text-secondary">UBICACIÓN</label>
+                                    <select name="lugar" class="form-select">
+                                        <option value="Canal">Canal</option>
+                                        <option value="Colector">Colector</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-bold small text-secondary">FOTO DE REFERENCIA</label>
+                                <input type="file" name="foto" class="form-control" accept="image/*">
+                            </div>
+
+                            <button type="submit" class="btn btn-success w-100 fw-bold py-2" style="background-color: #10b981; border:none;">
+                                GUARDAR SENSOR
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // LÓGICA DE LA PÁGINA ADMIN
+    document.addEventListener('DOMContentLoaded', () => {
+        checkAuth();
+
+        // 1. CREAR USUARIO
+        document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                Swal.showLoading();
+                const res = await axios.post('api.php?action=create_user', formData);
+                
+                if (res.data.success) {
+                    Swal.fire('Creado', res.data.message, 'success');
+                    e.target.reset();
+                } else {
+                    Swal.fire('Error', res.data.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'No tienes permisos de SuperAdmin', 'error');
+            }
+        });
+
+        // 2. CREAR SENSOR
+        loadSensorsForAdmin();
+        setupCreateVersionUI();
+        document.getElementById('createSensorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                Swal.showLoading();
+                const res = await axios.post('api.php?action=add_sensor', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                if (res.data.success) {
+                    Swal.fire('Guardado', res.data.message, 'success');
+                    e.target.reset();
+                } else {
+                    Swal.fire('Error', res.data.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'Fallo de conexión', 'error');
+            }
+        });
+    });
+
+    async function checkAuth() {
+        try {
+            const res = await axios.get('api.php?action=check_session');
+            if (!res.data.logged_in) window.location.href = 'login.html';
+            // Solo admin y superAdmin pueden entrar aquí
+            if (res.data.rol === 'cliente') {
+                alert('Acceso denegado. Zona restringida.');
+                window.location.href = 'index.html';
+            }
+        } catch(err) {
+            window.location.href = 'login.html';
+        }
+    }
+
+    async function loadSensorsForAdmin() {
+        try {
+            const res = await axios.get('api.php?action=get_sensors');
+            const baseSel = document.getElementById('baseSensorSelect');
+            if (!baseSel) return;
+            baseSel.innerHTML = '<option value="">-- Selecciona sensor --</option>';
+            res.data.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                opt.dataset.lat = s.latitud;
+                opt.dataset.lon = s.longitud;
+                opt.dataset.nf = s.nf;
+                opt.dataset.lugar = s.lugar;
+                baseSel.appendChild(opt);
+            });
+        } catch(err) {
+            console.error(err);
+        }
+    }
+
+    function setupCreateVersionUI() {
+        const toggle = document.getElementById('createVersionToggle');
+        const baseWrap = document.getElementById('createVersionFields');
+        const baseSel = document.getElementById('baseSensorSelect');
+        const hidden = document.getElementById('createVersionInput');
+
+        if (!toggle || !hidden) return;
+
+        const form = document.getElementById('createSensorForm');
+        const nombreInput = form ? form.querySelector('input[name="nombre"]') : null;
+        const latInput = form ? form.querySelector('input[name="latitud"]') : null;
+        const lonInput = form ? form.querySelector('input[name="longitud"]') : null;
+        const nfInput = form ? form.querySelector('input[name="nf"]') : null;
+        const lugarSelect = form ? form.querySelector('select[name="lugar"]') : null;
+
+        const lockFields = (lock) => {
+            if (nombreInput) nombreInput.readOnly = lock;
+            if (latInput) latInput.disabled = lock;
+            if (lonInput) lonInput.disabled = lock;
+            if (nfInput) nfInput.disabled = lock;
+            if (lugarSelect) lugarSelect.disabled = lock;
+            if (baseSel) baseSel.required = lock;
+            if (baseWrap) baseWrap.classList.toggle('d-none', !lock);
+        };
+
+        const applyBaseToFields = () => {
+            if (!baseSel || baseSel.selectedIndex < 0) return;
+            const opt = baseSel.options[baseSel.selectedIndex];
+            if (!opt || !opt.value) return;
+            if (nombreInput) nombreInput.value = opt.textContent;
+            if (latInput) latInput.value = opt.dataset.lat || '';
+            if (lonInput) lonInput.value = opt.dataset.lon || '';
+            if (nfInput) nfInput.value = opt.dataset.nf || '';
+            if (lugarSelect && opt.dataset.lugar) lugarSelect.value = opt.dataset.lugar;
+        };
+
+        toggle.addEventListener('change', () => {
+            const isVersion = toggle.checked;
+            hidden.value = isVersion ? '1' : '0';
+            lockFields(isVersion);
+            if (isVersion) applyBaseToFields();
+        });
+
+        if (baseSel) {
+            baseSel.addEventListener('change', () => {
+                if (toggle.checked) applyBaseToFields();
+            });
+        }
+    }
+</script>
+</body>
+</html>

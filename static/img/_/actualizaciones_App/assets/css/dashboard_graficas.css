@@ -1,0 +1,247 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background-color: #1e1e1e; /* Fondo oscuro general */
+    color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Para que el dashboard no se centre verticalmente si es pequeño */
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.dashboard-container {
+    width: 100%;
+    max-width: 1600px; /* Límite de ancho para el dashboard */
+    background-color: #252526; /* Fondo del dashboard un poco más claro */
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    background-color: #2d2d30;
+    border-bottom: 1px solid #3f3f46;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+.dashboard-header h2 {
+    margin: 0;
+    font-size: 1.4em;
+    color: #cccccc;
+}
+.dashboard-header .header-left button {
+    background: none;
+    border: none;
+    color: #cccccc;
+    font-size: 1.1em;
+    margin-right: 15px;
+    cursor: pointer;
+}
+.dashboard-header .header-left button:hover {
+    color: #ffffff;
+}
+
+
+.dashboard-controls {
+    display: flex;
+    align-items: center;
+    padding: 15px 25px;
+    background-color: #2d2d30;
+    border-bottom: 1px solid #3f3f46;
+    gap: 10px;
+    flex-wrap: wrap; /* Para responsividad */
+}
+
+.time-range-btn {
+    background-color: #3c3c3e;
+    color: #d4d4d4;
+    border: 1px solid #555;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s, color 0.2s;
+}
+.time-range-btn:hover {
+    background-color: #4a4a4c;
+}
+.time-range-btn.active {
+    background-color: #007acc;
+    color: white;
+    border-color: #007acc;
+}
+
+.custom-range-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+#dateRangePicker {
+    background-color: #333;
+    color: #d4d4d4;
+    border: 1px solid #555;
+    padding: 7px 10px;
+    border-radius: 4px;
+    max-width: 220px; /* Ajustar según necesidad */
+}
+.flatpickr-calendar { /* Estilo para el calendario de Flatpickr */
+    background: #2d2d30 !important;
+    border-radius: 4px !important;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3) !important;
+}
+.flatpickr-day { color: #ccc !important; }
+.flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: #007acc !important; border-color: #007acc !important; color: white !important; }
+.flatpickr-day:hover { background: #4a4a4c !important; }
+span.flatpickr-weekday { color: #aaa !important; }
+.numInputWrapper .numInput { color: #ccc !important; background: #333 !important; }
+.flatpickr-time input.flatpickr-hour, .flatpickr-time input.flatpickr-minute { color: #ccc !important; }
+.flatpickr-current-month .flatpickr-monthDropdown-months, .flatpickr-current-month input.cur-year { color: #ccc !important; }
+
+
+.current-time-display {
+    color: #b0b0b0;
+    font-size: 0.9em;
+    margin-left: auto; /* Empuja a la derecha */
+}
+.current-time-display i {
+    margin-right: 5px;
+}
+
+.control-actions button {
+    background: none;
+    border: none;
+    color: #b0b0b0;
+    font-size: 1.1em;
+    margin-left: 10px;
+    cursor: pointer;
+    padding: 5px;
+}
+.control-actions button:hover {
+    color: #ffffff;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); /* Responsive grid */
+    gap: 20px;
+    padding: 25px;
+    flex-grow: 1; /* Para que ocupe el espacio restante */
+}
+
+.chart-card {
+    background-color: #2d2d30; /* Fondo de cada tarjeta de gráfica */
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Importante para que los bordes redondeados funcionen con el canvas */
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #3f3f46;
+}
+.chart-header h3 {
+    margin: 0;
+    font-size: 1.1em;
+    color: #cccccc;
+}
+.chart-actions-btn {
+    background: none;
+    border: none;
+    color: #b0b0b0;
+    font-size: 1em;
+    cursor: pointer;
+}
+.chart-actions-btn:hover {
+    color: #ffffff;
+}
+
+.chart-body {
+    padding: 15px;
+    flex-grow: 1; /* El cuerpo de la gráfica toma el espacio disponible */
+    position: relative; /* Necesario para que el canvas se ajuste bien */
+    min-height: 300px; /* Altura mínima para las gráficas */
+}
+.chart-body canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.chart-legend-custom {
+    padding: 10px 15px;
+    border-top: 1px solid #3f3f46;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 0.85em;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+.legend-color-box {
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    border-radius: 2px;
+}
+.legend-item.hidden {
+    color: #777; /* Color para ítems ocultos */
+}
+.legend-item.hidden .legend-color-box {
+    background-color: #777 !important; /* Sobreescribir el color cuando está oculto */
+    opacity: 0.5;
+}
+csv-upload-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.csv-upload-container label {
+    font-size: 0.9em;
+    color: #b0b0b0;
+}
+#csvFileInput {
+    color: #d4d4d4; /* Para que el texto "Ningún archivo seleccionado" sea visible */
+}
+/* Estilo para el botón de selección de archivo (varía por navegador) */
+#csvFileInput::file-selector-button {
+    background-color: #3c3c3e;
+    color: #d4d4d4;
+    border: 1px solid #555;
+    padding: 7px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+#csvFileInput::file-selector-button:hover {
+    background-color: #4a4a4c;
+}
+#show-custom-chart-modal-btn {
+    display: inline-block !important;
+    margin-left: 15px; /* Un poco de espacio */
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#show-custom-chart-modal-btn:hover {
+    background-color: #0056b3;
+}

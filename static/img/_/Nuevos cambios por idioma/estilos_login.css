@@ -1,0 +1,548 @@
+/* css/estilos_login.css */
+
+/* --- VARIABLES DE COLOR --- */
+:root {
+    --login-bg: #22252A;
+    --login-header-bg: #22252A;
+    --login-header-border: #75E3EA;
+    --login-box-bg: rgba(50, 55, 60, 0.85);
+    --login-box-border: #444;
+    --login-text-primary: #e0e0e0;
+    --login-text-secondary: #b0b8c0;
+    --login-text-headings: #ffffff;
+    --login-input-bg: #2a2e33;
+    --login-input-border: #555c63;
+    --login-input-focus-border: #75E3EA;
+    --login-button-text: #75E3EA;
+    --login-button-border: #75E3EA;
+    --login-button-hover-bg: #75E3EA;
+    --login-button-hover-text: #22252A;
+    --login-error-text: #ff6b6b;
+    --login-toggle-icon: #88929b;
+}
+
+body.light-mode {
+    --login-bg: #f0f2f5;
+    --login-header-bg: #ffffff;
+    --login-header-border: #6c94bd;
+    --login-box-bg: #ffffff;
+    --login-box-border: #d1d9e6;
+    --login-text-primary: #333740;
+    --login-text-secondary: #555c63;
+    --login-text-headings: #1c1e21;
+    --login-input-bg: #e8f0fe;
+    --login-input-border: #ced4da;
+    --login-input-focus-border: #6c94bd;
+    --login-button-text: #6c94bd;
+    --login-button-border: #6c94bd;
+    --login-button-hover-bg: #6c94bd;
+    --login-button-hover-text: #ffffff;
+    --login-error-text: #dc3545;
+    --login-toggle-icon: #6c757d;
+}
+
+/* --- ESTILOS GENERALES USANDO VARIABLES --- */
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--login-text-primary); /* Usar variable */
+    background-color: var(--login-bg); /* Usar variable */
+    transition: background-color 0.3s ease, color 0.3s ease; /* Transición suave */
+}
+body {
+    display: flex;
+    flex-direction: column;
+}
+.login-background {
+    background-color: var(--login-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 0px; /* Reducido, ya que el header es más alto */
+    box-sizing: border-box;
+}
+
+.login-header {
+    width: 100%;
+    padding: 10px 20px; /* Ajustado padding */
+    display: flex;
+    justify-content: space-between; /* Para separar logo y botón de tema */
+    align-items: center;
+    border-bottom: 3px solid var(--login-header-border);
+    margin-bottom: 40px;
+    background-color: var(--login-header-bg);
+    transition: background-color 0.3s ease, border-bottom-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.header-logo-container{
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.logo-calsens {
+    height: 55px; /* Ajusta según tu preferencia */
+    width: auto;
+}
+
+.header-theme-button-container{
+    width: 50px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.header-spacer{
+    width: 50px;
+}
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center; /* O flex-start si prefieres */
+    flex-grow: 1;
+    width: 100%;
+    padding: 40px 20px;
+}
+
+.login-box {
+    background-color: var(--login-box-bg);
+    padding: 30px 40px;
+    border-radius: 12px;
+    border: 1px solid var(--login-box-border);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); /* Sombra más sutil en modo claro */
+    width: 100%;
+    max-width: 500px;
+    text-align: left;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+body.light-mode .login-box {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+
+.login-box h1 {
+    font-size: 22px;
+    font-weight: 500;
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: var(--login-text-headings);
+    text-align: center;
+    transition: color 0.3s ease;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 8px;
+    margin-top: 15px;
+    color: var(--login-text-secondary);
+    transition: color 0.3s ease;
+}
+
+.input-group input[type="text"],
+.input-group input[type="password"] {
+    width: calc(100% - 24px);
+    padding: 12px;
+    border: 1px solid var(--login-input-border);
+    border-radius: 6px;
+    background-color: var(--login-input-bg);
+    color: var(--login-text-primary);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+}
+
+.input-group input[type="text"]:focus,
+.input-group input[type="password"]:focus {
+    border-color: var(--login-input-focus-border);
+}
+
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.password-wrapper input[type="password"],
+.password-wrapper input[type="text"] {
+    width: 100%;
+    padding-right: 40px;
+    box-sizing: border-box;
+}
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--login-toggle-icon);
+    transition: color 0.3s ease;
+}
+
+.login-button {
+    width: 100%;
+    padding: 12px;
+    background-color: transparent;
+    color: var(--login-button-text);
+    border: 1px solid var(--login-button-border);
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    margin-top: 10px;
+}
+.login-button:hover {
+    background-color: var(--login-button-hover-bg);
+    color: var(--login-button-hover-text);
+}
+
+.error-message {
+    color: var(--login-error-text);
+    font-size: 13px;
+    text-align: center;
+    margin-top: 15px;
+    min-height: 18px;
+    transition: color 0.3s ease;
+}
+
+/* Para el logo en modo claro, si es el mismo archivo y es claro */
+body.light-mode .logo-calsens {
+    filter: brightness(0.4) contrast(1.2); /* Ejemplo para oscurecer un logo claro */
+    /* O podrías tener un logo_calsens_oscuro.png y cambiar el src con JS */
+}
+body.light-mode .main-header .header-logo{
+    filter: brightness(0.4) contrast(1.2);
+}
+/* ========================================= */
+/* ESTILO CORRECTO PARA EL BOTÓN DE TEMA     */
+/* ========================================= */
+
+/* Reseteamos el botón para que sea invisible */
+#toggle-theme-button {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    line-height: 1; /* Ayuda a centrar el icono verticalmente */
+}
+
+/* Estilizamos el icono (la 'i') que está dentro del botón */
+#toggle-theme-button i {
+    font-size: 18px; /* Ajusta el tamaño a tu gusto */
+    color: var(--login-text-secondary); /* Usa tu variable para el color del texto */
+    padding: 8px; /* Añadimos un poco de espacio para que sea más fácil hacer clic */
+    border-radius: 50%; /* Hacemos el área de clic circular */
+    transition: color 0.3s ease, background-color 0.3s ease; /* Transiciones suaves */
+}
+
+/* Efecto hover: cambia el color del icono y añade un fondo sutil */
+#toggle-theme-button:hover i {
+    color: var(--login-header-border); /* Usa el color de acento de tu borde */
+    background-color: rgba(117, 227, 234, 0.1); /* Fondo muy sutil con el color de acento */
+}
+
+/* Adaptación para modo claro */
+body.light-mode #toggle-theme-button:hover i {
+    background-color: rgba(0, 123, 255, 0.1); /* Fondo sutil con el acento del modo claro */
+}
+
+/* ============================================= */
+/* ESTILOS MEJORADOS PARA FORMULARIOS             */
+/* ============================================= */
+
+/* --- Estilos base para todos los inputs y selects --- */
+.input-group input[type="text"],
+.input-group input[type="email"],
+.input-group input[type="password"],
+.input-group select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 5px; /* Pequeño espacio debajo de la etiqueta */
+    border-radius: 6px;
+    font-size: 16px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-sizing: border-box; /* Asegura que el padding no afecte al ancho */
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* --- Estilos para MODO OSCURO (por defecto) --- */
+.input-group input[type="text"],
+.input-group input[type="email"],
+.input-group input[type="password"],
+.input-group select {
+    background-color: #2d3748; /* Fondo gris oscuro */
+    color: #edf2f7; /* Texto claro */
+    border: 1px solid #4a5568; /* Borde sutil */
+}
+
+/* Efecto al hacer clic (focus) en MODO OSCURO */
+.input-group input[type="text"]:focus,
+.input-group input[type="email"]:focus,
+.input-group input[type="password"]:focus,
+.input-group select:focus {
+    outline: none; /* Quita el horrible borde azul por defecto */
+    border-color: #75E3EA; /* Borde con el color de acento de tu tema */
+    box-shadow: 0 0 0 3px rgba(117, 227, 234, 0.2); /* Sombra exterior suave */
+}
+
+/* Estilo para campos deshabilitados en MODO OSCURO */
+.input-group input:disabled {
+    background-color: #4a5568;
+    color: #a0aec0;
+    cursor: not-allowed;
+}
+
+/* --- Estilos para MODO CLARO --- */
+body.light-mode .input-group input[type="text"],
+body.light-mode .input-group input[type="email"],
+body.light-mode .input-group input[type="password"],
+body.light-mode .input-group select {
+    background-color: #f8f9fa; /* Fondo gris muy claro */
+    color: #212529; /* Texto oscuro */
+    border: 1px solid #ced4da; /* Borde estándar */
+}
+
+/* Efecto al hacer clic (focus) en MODO CLARO */
+body.light-mode .input-group input[type="text"]:focus,
+body.light-mode .input-group input[type="email"]:focus,
+body.light-mode .input-group input[type="password"]:focus,
+body.light-mode .input-group select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+/* Estilo para campos deshabilitados en MODO CLARO */
+body.light-mode .input-group input:disabled {
+    background-color: #e9ecef;
+    color: #6c757d;
+}
+
+/* --- Arreglo especial para el desplegable <select> --- */
+.input-group select {
+    /* Ocultamos la flecha por defecto del navegador */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* Añadimos nuestra propia flecha como imagen de fondo */
+    background-position: right 15px center;
+    background-repeat: no-repeat;
+    background-size: 1em;
+}
+
+/* Flecha para MODO OSCURO (SVG de una flecha blanca) */
+.input-group select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+}
+
+/* Flecha para MODO CLARO (SVG de una flecha negra) */
+body.light-mode .input-group select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+}
+
+/* Nuevo contenedor principal */
+.sensor-selection-wrapper {
+    border: 1px solid #4a5568;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #1a202c;
+}
+/* =================================================== */
+/* --- ESTILOS PARA CHECKBOXES EN MODO CLARO --- */
+/* =================================================== */
+
+/* Cambiamos el color del borde del checkbox sin marcar */
+body.light-mode .checkbox-item label::before {
+    border-color: #6c94bd; /* Un azul estándar */
+}
+
+/* Cambiamos el color de la marca (tick) a blanco */
+body.light-mode .checkbox-item label::after {
+    border-color: white;
+}
+
+/* Cambiamos el color de fondo y borde del checkbox marcado */
+body.light-mode .checkbox-item input[type="checkbox"]:checked + label::before {
+    background-color: #6c94bd; /* El mismo azul */
+    border-color: #6c94bd;
+}
+
+.action-checkboxes {
+    padding-bottom: 10px;
+}
+
+.separator {
+    border: none;
+    height: 1px;
+    background-color: #4a5568;
+    margin: 10px 0 15px 0;
+}
+
+/* El contenedor con scroll ahora no necesita borde ni padding propio */
+.checkbox-container {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* NUEVA REGLA PARA LAS DOS COLUMNAS */
+.checkbox-container.two-columns {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 20px; /* Espacio solo entre columnas */
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px; /* Más espacio entre items */
+    cursor: pointer; /* Hacemos que toda la fila sea clickeable */
+    position: relative; /* Para el checkbox personalizado */
+}
+
+/* Ocultamos el checkbox por defecto del navegador */
+.checkbox-item input[type="checkbox"] {
+    opacity: 0;
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
+.checkbox-item label {
+    cursor: pointer;
+    font-size: 1em;
+    padding-left: 30px; /* Dejamos espacio para nuestro checkbox falso */
+    user-select: none; /* Evita que el texto se seleccione al hacer doble clic */
+}
+
+/* Creamos nuestro checkbox falso usando un pseudo-elemento ::before */
+.checkbox-item label::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: 2px solid #75E3EA; /* Color del borde (turquesa) */
+    border-radius: 4px;
+    background-color: transparent;
+    transition: all 0.2s ease;
+}
+
+/* Creamos el "tick" (la marca de verificación) usando un pseudo-elemento ::after */
+.checkbox-item label::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    width: 6px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: translateY(-50%) rotate(45deg);
+    opacity: 0; /* Oculto por defecto */
+    transition: opacity 0.2s ease;
+}
+
+/* Cuando el checkbox real está marcado (:checked)... */
+.checkbox-item input[type="checkbox"]:checked + label::before {
+    background-color: #75E3EA; /* Cambiamos el fondo */
+    border-color: #75E3EA;
+}
+
+.checkbox-item input[type="checkbox"]:checked + label::after {
+    opacity: 1; /* Mostramos el "tick" */
+}
+
+/* --- Estilos para modo claro --- */
+body.light-mode .checkbox-container {
+    border-color: #cbd5e0;
+    background-color: #ffffff;
+}
+
+/* Cambiamos el color del borde y el fondo del checkbox en modo claro */
+body.light-mode .checkbox-item label::before {
+    border-color: #6c94bd;
+}
+body.light-mode .checkbox-item input[type="checkbox"]:checked + label::before {
+    background-color: #6c94bd;
+    border-color: #6c94bd;
+}
+
+/* =================================================== */
+/* --- NUEVOS ESTILOS PARA INTERFAZ DE INFORMES --- */
+/* =================================================== */
+
+.report-form-container {
+    background-color: var(--login-box-bg);
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 700px;
+    margin: 40px auto; /* <<--- ELIMINA O COMENTA ESTA LÍNEA */
+}
+
+.report-step {
+    margin-bottom: 25px;
+    border-bottom: 1px solid #4a5568; /* Separador oscuro */
+    padding-bottom: 25px;
+}
+
+.report-step:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.report-step h2 {
+    font-size: 1.1em;
+    color: #75E3EA; /* Color turquesa para los títulos de sección */
+    margin-top: 0;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.report-step h2 .step-number {
+    background-color: #75E3EA;
+    color: #1a202c;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 12px;
+}
+
+/* Estilos para modo claro */
+body.light-mode .report-form-container {
+    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+body.light-mode .report-step {
+    border-color: #e9ecef;
+}
+body.light-mode .report-step h2 {
+    color: #6c94bd;
+}
+body.light-mode .report-step h2 .step-number {
+    background-color: #6c94bd;
+    color: white;
+}
+
+body.light-mode main.login-container {
+    background-color: var(--login-bg);
+}
+
+.scene-header-logo-right {
+    width: auto;        /* Mantiene la proporción de la imagen */
+    margin-right: 25px; /* Crea un espacio entre el logo y el siguiente elemento */
+}

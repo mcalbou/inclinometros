@@ -300,6 +300,7 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
     background: #e2e8f0; /* Gris muy suave */
     box-shadow: none;
     margin-top: 40px; /* Espacio para que quepan las etiquetas arriba */
+    margin-bottom: 50px !important;
 }
 /* 2. La parte conectada (el rango seleccionado) */
 .noUi-connect {
@@ -447,7 +448,7 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
 /* Efecto "Zoom" al hacer clic (para ambos) */
 #dateSlider .noUi-handle:active, 
 #depthSlider .noUi-handle:active {
-    transform: scale(1.2); /* Crecen un poquito al tocar */
+    transform: scale(1.1); /* Crecen un poquito al tocar */
     box-shadow: 0 0 0 4px rgba(92, 135, 178, 0.2) !important; /* Resplandor azul */
 }
 
@@ -562,4 +563,71 @@ h5 { font-size: 1rem; font-weight: 600; color: var(--text-muted); margin-bottom:
 h1 {
     font-size: 1.8rem; /* Un poco más pequeño para equilibrar */
     margin-bottom: 0 !important; /* El margen lo maneja el contenedor padre */
+}
+
+/* ================================================================= */
+/*          CORRECCIÓN DEFINITIVA DE BORDES (PEGAR AL FINAL)         */
+/* ================================================================= */
+
+/* 1. ENCOGER LA BARRA PARA DAR AIRE A LOS LADOS */
+#dateSlider, 
+#depthSlider {
+    margin-left: 25px !important;  /* Empuja la barra a la derecha */
+    margin-right: 25px !important; /* Empuja la barra a la izquierda */
+    width: auto !important;        /* Deja que el navegador calcule el ancho restante */
+}
+
+/* 2. TRUCO DE ALINEACIÓN "HACIA ADENTRO" */
+
+/* --- Etiqueta DERECHA (La que se corta) --- */
+/* En vez de centrarse, la obligamos a anclarse a la derecha y crecer hacia la izquierda */
+#dateSlider .noUi-handle-upper .noUi-tooltip {
+    left: auto !important;       /* Soltamos el lado izquierdo */
+    right: -10px !important;     /* La pegamos al borde derecho de la bolita */
+    transform: none !important;  /* Quitamos el centrado automático */
+    text-align: right;
+}
+
+/* Movemos la flechita de la etiqueta derecha para que siga apuntando a la bola */
+#dateSlider .noUi-handle-upper .noUi-tooltip::after {
+    left: auto !important;
+    right: 15px !important;      /* La flecha se mueve a la derecha de la caja */
+}
+
+/* --- Etiqueta IZQUIERDA (Para que quede simétrico) --- */
+#dateSlider .noUi-handle-lower .noUi-tooltip {
+    left: -10px !important;      /* La pegamos al borde izquierdo de la bolita */
+    right: auto !important;
+    transform: none !important;
+    text-align: left;
+}
+
+/* Movemos la flechita de la etiqueta izquierda */
+#dateSlider .noUi-handle-lower .noUi-tooltip::after {
+    left: 15px !important;       /* La flecha se mueve a la izquierda de la caja */
+    right: auto !important;
+}
+
+/* ================================================================= */
+/*      CORRECCIÓN FLECHA DE LA FECHA IZQUIERDA (FECHA ABAJO)        */
+/* ================================================================= */
+
+/* 1. Posicionar la CAJA de texto DEBAJO de la barra */
+#dateSlider .noUi-handle-lower .noUi-tooltip {
+    top: 140% !important;       /* La empujamos hacia abajo */
+    bottom: auto !important;    /* Soltamos la parte de arriba */
+}
+
+/* 2. Posicionar el TRIÁNGULO ENCIMA de la caja de texto */
+#dateSlider .noUi-handle-lower .noUi-tooltip::after {
+    /* Posición: Pegado al borde superior de la cajita */
+    top: auto !important;       
+    bottom: 100% !important;    
+    
+    /* Dibujo: Triángulo que apunta hacia ARRIBA */
+    border-color: transparent transparent #cbd5e1 transparent !important;
+    
+    /* Ajuste horizontal (ya lo teníamos, pero por asegurar) */
+    left: 15px !important;      
+    right: auto !important;
 }

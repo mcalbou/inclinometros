@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>  
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -60,6 +60,10 @@
                     </div>
                 </div>
 
+                <button id="btnVersions" class="btn btn-sm btn-outline-secondary w-100 mb-3 shadow-sm" style="display:none; border-style: dashed;">
+                    Otras Versiones
+                </button>
+
                 <hr class="my-4 opacity-25">
 
                 <div class="mb-3">
@@ -84,27 +88,17 @@
                 <button id="btnUpdate" class="btn btn-primary w-100 fw-bold shadow-sm py-2 mb-4" style="border-radius: 8px;">
                     Reestablecer Vista
                 </button>
-            </div>
 
-            <div id="adminPanel" class="mb-3" style="display: none;">
                 <hr class="my-4 opacity-25">
-                <label class="sidebar-label" style="color: #dc2626;">ADMINISTRACIÓN</label>
-                <button class="btn btn-outline-danger w-100 btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#userModal">
-                    + Nuevo Usuario
-                </button>
-                <button class="btn btn-outline-primary w-100 btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#sensorModal">
-                    + Nuevo Sensor
-                </button>
-            </div>
 
-            <div class="mt-auto upload-zone p-3 rounded-3 text-center" style="background: #f8fafc; border: 2px dashed #cbd5e1; transition: all 0.3s;">
-                <label class="form-label fw-bold text-secondary mb-2" style="font-size: 0.85rem;">IMPORTAR CSV</label>
-                <form id="uploadForm">
-                    <input type="file" name="file" id="csvFile" accept=".csv" class="form-control form-control-sm mb-2">
-                    <button type="submit" class="btn btn-success btn-sm w-100 fw-semibold">
-                        Cargar a BD
-                    </button>
-                </form>
+                <!-- NUEVO BOTÓN GESTIÓN DE DATOS -->
+                <a href="gestion.html" class="btn btn-outline-dark w-100 fw-bold shadow-sm py-2 mb-3" style="border-width: 2px;">
+                    Gestión Datos
+                </a>
+
+                <a href="admin.html" id="btnAdminLink" class="btn btn-outline-danger w-100 fw-bold shadow-sm py-2 text-center px-3" style="border-width: 1px; display: none;">
+                    Administración
+                </a>
             </div>
             
             <div class="pb-4"></div> 
@@ -135,6 +129,12 @@
                     <div class="vis-container">
                         <h5 class="mb-2">Ubicación</h5>
                         <div id="map" style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid #cbd5e1; z-index: 0;"></div>
+                        
+                        <div class="mt-2 text-end">
+                            <a id="linkGoogleMaps" href="#" target="_blank" class="text-decoration-none fw-bold" style="font-size: 0.9rem; display: none;">
+                                Ver en Google Maps
+                            </a>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -200,11 +200,11 @@
                     <div class="card border-0 shadow-sm" style="background: #f0f9ff; border: 1px solid #bae6fd;">
                         <div class="card-body text-center d-flex align-items-center justify-content-between p-4">
                             <div class="text-start">
-                                <h5 class="fw-bold text-primary mb-1">📥 Exportar Datos</h5>
+                                <h5 class="fw-bold text-primary mb-1">Exportar Datos</h5>
                                 <p class="text-muted mb-0 small">Descarga el histórico completo o filtrado de este sensor en formato Excel/CSV.</p>
                             </div>
                             <button id="btnDownloadCsv" class="btn btn-success fw-bold px-4 py-2" style="background-color: #10b981; border:none;">
-                                <span style="font-size: 1.2rem; vertical-align: middle;">📄</span> Descargar CSV
+                                <span style="font-size: 1.2rem; vertical-align: middle;"></span> Descargar CSV
                             </button>
                         </div>
                     </div>
@@ -251,6 +251,22 @@
       </div>
       <div class="modal-body p-4">
         <form id="createSensorForm">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="createVersionToggle">
+                <label class="form-check-label fw-bold text-muted" for="createVersionToggle">
+                    Crear nueva versión de un sensor existente
+                </label>
+            </div>
+            <input type="hidden" name="create_version" id="createVersionInput" value="0">
+            <div id="createVersionFields" class="mb-3 d-none">
+                <label class="form-label small fw-bold text-muted">Sensor base</label>
+                <select id="baseSensorSelect" name="base_sensor_id" class="form-select">
+                    <option value="">-- Selecciona sensor --</option>
+                </select>
+                <div class="form-text small text-muted">
+                    Se copiarán nombre, coordenadas, NF y ubicación.
+                </div>
+            </div>
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">Nombre</label>
                 <input type="text" name="nombre" class="form-control" placeholder="Ej: Inclinómetro IN-99" required>
@@ -288,6 +304,24 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL DE VERSIONES -->
+<div class="modal fade" id="versionsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title fw-bold">Histórico de Versiones</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="list-group list-group-flush" id="versionsList">
+            <!-- Aquí se inyectará la lista con JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="app.js"></script>
 

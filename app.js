@@ -50,6 +50,7 @@ async function initApp() {
         // Cargar datos iniciales
         initMap();
         await loadSensors();
+        setupCreateVersionUI();
         
         // Listeners del Dashboard
         const btnUpdate = document.getElementById('btnUpdate');
@@ -186,6 +187,12 @@ function setupUserUI(userData) {
         const adminPanel = document.getElementById('adminPanel');
         if(adminPanel) adminPanel.style.display = 'block';
     }
+
+    // LOGICA NUEVA PARA EL BOTÓN ADMIN
+    if (userData.rol === 'superAdmin' || userData.rol === 'admin') {
+        const btnAdmin = document.getElementById('btnAdminLink');
+        if(btnAdmin) btnAdmin.style.display = 'block';
+    }
 }
 
 // --- API CALLS ---
@@ -253,8 +260,80 @@ async function loadSensors() {
             // 5. FORZAR LA SELECCIÓN VACÍA (Extra seguridad)
             sel.value = ""; 
         }
+        fillBaseSensorSelect(sensores);
     } catch (err) {
         console.error("Error cargando sensores", err);
+    }
+}
+
+function fillBaseSensorSelect(sensores) {
+    const baseSel = document.getElementById('baseSensorSelect');
+    if (!baseSel) return;
+
+    baseSel.innerHTML = '<option value="">-- Selecciona sensor --</option>';
+    if (!Array.isArray(sensores)) return;
+
+    sensores.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.nombre;
+        opt.dataset.lat = s.latitud;
+        opt.dataset.lon = s.longitud;
+        opt.dataset.nf = s.nf;
+        opt.dataset.lugar = s.lugar;
+        baseSel.appendChild(opt);
+    });
+}
+
+function setupCreateVersionUI() {
+    const toggle = document.getElementById('createVersionToggle');
+    const baseWrap = document.getElementById('createVersionFields');
+    const baseSel = document.getElementById('baseSensorSelect');
+    const hidden = document.getElementById('createVersionInput');
+
+    if (!toggle || !hidden) return;
+
+    const form = document.getElementById('createSensorForm');
+    const nombreInput = form ? form.querySelector('input[name="nombre"]') : null;
+    const latInput = form ? form.querySelector('input[name="latitud"]') : null;
+    const lonInput = form ? form.querySelector('input[name="longitud"]') : null;
+    const nfInput = form ? form.querySelector('input[name="nf"]') : null;
+    const lugarSelect = form ? form.querySelector('select[name="lugar"]') : null;
+
+    const lockFields = (lock) => {
+        if (nombreInput) nombreInput.readOnly = lock;
+        if (latInput) latInput.disabled = lock;
+        if (lonInput) lonInput.disabled = lock;
+        if (nfInput) nfInput.disabled = lock;
+        if (lugarSelect) lugarSelect.disabled = lock;
+        if (baseSel) baseSel.required = lock;
+        if (baseWrap) baseWrap.classList.toggle('d-none', !lock);
+    };
+
+    const applyBaseToFields = () => {
+        if (!baseSel || baseSel.selectedIndex < 0) return;
+        const opt = baseSel.options[baseSel.selectedIndex];
+        if (!opt || !opt.value) return;
+        if (nombreInput) nombreInput.value = opt.textContent;
+        if (latInput) latInput.value = opt.dataset.lat || '';
+        if (lonInput) lonInput.value = opt.dataset.lon || '';
+        if (nfInput) nfInput.value = opt.dataset.nf || '';
+        if (lugarSelect && opt.dataset.lugar) lugarSelect.value = opt.dataset.lugar;
+    };
+
+    toggle.addEventListener('change', () => {
+        const isVersion = toggle.checked;
+        hidden.value = isVersion ? '1' : '0';
+        lockFields(isVersion);
+        if (isVersion) {
+            applyBaseToFields();
+        }
+    });
+
+    if (baseSel) {
+        baseSel.addEventListener('change', () => {
+            if (toggle.checked) applyBaseToFields();
+        });
     }
 }
 
@@ -396,23 +475,59 @@ function updateSensorInfo() {
         foto: opt.dataset.foto
     };
 
+    // 1. Mostrar caja de información
     const infoBox = document.getElementById('sensorInfoBox');
     if(infoBox) infoBox.style.display = 'block';
     
     const infoNombre = document.getElementById('infoNombre');
     const infoCoords = document.getElementById('infoCoords');
     if(infoNombre) infoNombre.textContent = opt.text;
-    if(infoCoords) infoCoords.textContent = `${currentSensorInfo.lat.toFixed(4)}, ${currentSensorInfo.lon.toFixed(4)}`;
+    if(infoCoords) infoCoords.textContent = `${currentSensorInfo.lat.toFixed(5)}, ${currentSensorInfo.lon.toFixed(5)}`;
 
-    if(map && !isNaN(currentSensorInfo.lat)) {
-        map.invalidateSize();
-        map.flyTo([currentSensorInfo.lat, currentSensorInfo.lon], 18);
-        if(mapMarker) map.removeLayer(mapMarker);
-        mapMarker = L.circleMarker([currentSensorInfo.lat, currentSensorInfo.lon], {
-            radius: 12, color: 'red', fillColor: '#f03', fillOpacity: 0.8
-        }).addTo(map);
+    // 2. Actualizar enlace Google Maps
+    const linkMaps = document.getElementById('linkGoogleMaps');
+    if (linkMaps && !isNaN(currentSensorInfo.lat)) {
+        linkMaps.href = `https://www.google.com/maps?q=${currentSensorInfo.lat},${currentSensorInfo.lon}`;
+        linkMaps.style.display = 'inline-block';
     }
 
+    // 3. ACTUALIZAR MAPA (LÓGICA CORREGIDA)
+    if(map && !isNaN(currentSensorInfo.lat)) {
+        map.invalidateSize();
+
+        // A) Borrar la bolita anterior INMEDIATAMENTE para que no estorbe
+        if(mapMarker) {
+            map.removeLayer(mapMarker);
+            mapMarker = null;
+        }
+
+        // B) Iniciar el vuelo (animación) hacia el destino
+        map.flyTo([currentSensorInfo.lat, currentSensorInfo.lon], 18, {
+            animate: true,
+            duration: 1.5 // Duración del vuelo en segundos
+        });
+
+        // C) Esperar a que termine el vuelo ('moveend') para pintar la nueva bolita
+        map.once('moveend', function() {
+            // Creamos el marcador SOLO cuando el mapa ya está quieto en el sitio
+            mapMarker = L.circleMarker([currentSensorInfo.lat, currentSensorInfo.lon], {
+                radius: 12, 
+                color: 'red', 
+                fillColor: '#f03', 
+                fillOpacity: 0.8
+            }).addTo(map);
+
+            // Añadir el popup
+            mapMarker.bindPopup(`
+                <b>${opt.text}</b><br>
+                <a href="https://www.google.com/maps?q=${currentSensorInfo.lat},${currentSensorInfo.lon}" target="_blank">
+                    Abrir en Google Maps
+                </a>
+            `);
+        });
+    }
+
+    // 4. Actualizar Foto
     const img = document.getElementById('sensorPhoto');
     const txt = document.getElementById('noPhotoText');
     if(img && txt) {
@@ -425,6 +540,21 @@ function updateSensorInfo() {
             txt.style.display = 'block';
         }
     }
+}
+
+// MOSTRAR BOTÓN DE VERSIONES
+const btnVer = document.getElementById('btnVersions');
+if(btnVer) {
+    btnVer.style.display = 'block';
+    // Le asignamos el evento onclick aquí mismo para pasarle el ID actual
+    btnVer.onclick = () => {
+        const sel = document.getElementById('sensorSelect');
+        if (!sel || !sel.value) {
+            Swal.fire('Atención', 'Selecciona un sensor primero', 'warning');
+            return;
+        }
+        openVersionsModal(sel.value);
+    };
 }
 
 function renderAllCharts() {
@@ -441,8 +571,8 @@ function renderAllCharts() {
     }
 
     // 1. Gráficos de Perfil (A y B)
-    const dates = [...new Set(data.map(d => d.fecha_str))].sort();
-    const latestDate = dates[dates.length - 1]; 
+    const dates = [...new Set(data.map(d => d.fecha_str))].sort().reverse();
+    const latestDate = dates[0]; 
 
     const formatDateES = (str) => {
         if(!str) return str;
@@ -461,6 +591,11 @@ function renderAllCharts() {
                 y: dateData.map(d => d.profundidad),
                 mode: isLatest ? 'lines+markers' : 'lines',
                 name: formatDateES(date),
+                
+                // --- AÑADE ESTA LÍNEA AQUÍ ---
+                zorder: isLatest ? 100 : 1, 
+                // -----------------------------
+
                 line: { width: isLatest ? 3 : 1 },
                 marker: { size: 6, symbol: 'circle' },
                 opacity: isLatest ? 1 : 0.7,
@@ -561,4 +696,114 @@ async function handleUpload(e) {
 function showLoading(show) {
     const overlay = document.getElementById('loadingOverlay');
     if(overlay) overlay.style.display = show ? 'flex' : 'none';
+}
+
+// --- GESTIÓN DE VERSIONES ---
+
+async function openVersionsModal(currentId) {
+    const listContainer = document.getElementById('versionsList');
+    listContainer.innerHTML = '<div class="p-3 text-center text-muted">Cargando versiones...</div>';
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('versionsModal'));
+    modal.show();
+
+    try {
+        const res = await axios.get(`api.php?action=get_versions&id=${currentId}`);
+        const versiones = res.data;
+
+        listContainer.innerHTML = ''; // Limpiar
+
+        const versionConFinMasReciente = versiones.reduce((acc, v) => {
+            if (!v.f_fin) return acc;
+            const ts = new Date(v.f_fin.split('/').reverse().join('-')).getTime();
+            if (!acc || ts > acc.ts) return { id: v.id, ts };
+            return acc;
+        }, null);
+
+        versiones.forEach(v => {
+            const isCurrent = (v.id == currentId); // ¿Es el que estamos viendo?
+            const isPeriodoActual = versionConFinMasReciente && v.id == versionConFinMasReciente.id;
+            
+            // Texto de fechas
+            let fechaTexto = 'Período: Sin datos';
+            if (v.f_ini && v.f_fin) {
+                fechaTexto = `Período: ${v.f_ini} - ${v.f_fin}`;
+            }
+
+            // Crear elemento de lista
+            const item = document.createElement('button');
+            item.className = `list-group-item list-group-item-action py-3 ${isCurrent ? 'active bg-light text-dark border-start border-4 border-primary' : ''}`;
+            
+            // Contenido HTML del botón
+            item.innerHTML = `
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <h6 class="mb-1 fw-bold">Período</h6>
+                    ${isCurrent ? '<span class="badge bg-primary">Viendo ahora</span>' : ''}
+                </div>
+                <p class="mb-1 small">${fechaTexto}</p>
+                ${isPeriodoActual ? '<span class="badge bg-success">Período actual</span>' : ''}
+            `;
+
+            // Al hacer clic
+            if (!isCurrent) {
+                item.onclick = () => switchVersion(v.id, modal);
+            } else {
+                item.style.cursor = 'default';
+            }
+
+            listContainer.appendChild(item);
+        });
+
+    } catch (err) {
+        console.error(err);
+        listContainer.innerHTML = '<div class="p-3 text-danger">Error al cargar versiones</div>';
+    }
+}
+
+async function switchVersion(newId, modalInstance) {
+    // 1. Cerrar modal
+    modalInstance.hide();
+    showLoading(true);
+
+    // 2. Truco: El select principal a veces no tiene la opción antigua.
+    // Vamos a forzar la actualización manual.
+    
+    // Actualizamos variable global (si la usas)
+    // Pero lo más importante es llamar a updateDashboard con el nuevo ID.
+    
+    // Para que funcione con tu lógica actual que lee de 'sensorSelect', 
+    // necesitamos añadir temporalmente esta opción al select si no existe.
+    const sel = document.getElementById('sensorSelect');
+    let opt = sel.querySelector(`option[value="${newId}"]`);
+    
+    if (!opt) {
+        // Si es una versión antigua que no sale en el listado principal, la creamos al vuelo
+        opt = document.createElement('option');
+        opt.value = newId;
+        opt.text = "Versión Histórica"; // Se actualizará luego
+        opt.selected = true;
+        sel.appendChild(opt);
+    }
+    
+    sel.value = newId;
+
+    // 3. Forzar actualización del dashboard
+    // Necesitamos recargar la info del sensor (lat, lon, etc) porque puede haber cambiado en la versión vieja
+    // Como tu función loadSensors solo carga los actuales, haremos una llamada extra rápida
+    // O simplemente llamamos a updateDashboard y dejamos que él intente cargar.
+    
+    // TRUCO: Volver a cargar los sensores pero asegurarnos de que el seleccionado es el newId
+    // Esto es complejo. Lo más fácil es:
+    
+    console.log("Cambiando a versión ID:", newId);
+    
+    // Llamada directa a obtener datos
+    await updateDashboard(); 
+
+    // Actualizar visualmente que estamos en una versión antigua
+    const infoNombre = document.getElementById('infoNombre');
+    if(infoNombre) infoNombre.innerHTML += ` <span class="badge bg-warning text-dark">HISTÓRICO</span>`;
+
+    showLoading(false);
 }

@@ -1,4 +1,5 @@
 <?php
+// api.php - API para gestión de sensores y datos
 session_start(); // INICIAR SESIÓN PHP
 header('Content-Type: application/json');
 
@@ -7,7 +8,7 @@ $host = 'localhost';
 $db   = 'inclinometros_db';
 $user = 'postgres';
 //$pass = 'DatosBase1';
-$pass = 'EstrucDatosAdmin'; 
+$pass = 'EstrucDatosAdmin';
 $dsn  = "pgsql:host=$host;port=5432;dbname=$db";
 
 try {
@@ -77,11 +78,43 @@ if (!isset($_SESSION['user_id'])) {
 // 3. ACCIONES PROTEGIDAS
 // ==========================================
 
-// A. OBTENER SENSORES (Todos los roles pueden ver)
+// A. OBTENER SENSORES (SOLO LOS ACTUALES PARA EL DESPLEGABLE)
 if ($action === 'get_sensors') {
-    // Ordenamos por 'lugar' (descendente para que Colector salga antes o después según prefieras) y luego nombre
-    $stmt = $pdo->query("SELECT * FROM sensores ORDER BY lugar DESC, nombre ASC");
+    // Usamos DISTINCT ON en Postgres para sacar solo la última versión de cada nombre
+    // Ordenamos por nombre y luego por versión descendente (la más alta primero)
+    $sql = "SELECT DISTINCT ON (nombre) * 
+            FROM sensores 
+            ORDER BY nombre, version DESC";
+            
+    $stmt = $pdo->query($sql);
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    exit;
+}
+
+// NUEVO: OBTENER VERSIONES DE UN SENSOR ESPECÍFICO
+if ($action === 'get_versions') {
+    $sensor_id = $_GET['id'] ?? 0;
+    
+    // 1. Averiguar el nombre del sensor actual
+    $stmtName = $pdo->prepare("SELECT nombre FROM sensores WHERE id = ?");
+    $stmtName->execute([$sensor_id]);
+    $nombre = $stmtName->fetchColumn();
+
+    if ($nombre) {
+        // 2. Buscar todos los sensores que se llamen igual, ordenados por versión
+        $stmtVers = $pdo->prepare("SELECT s.id, s.nombre, s.version,
+                                   to_char(MIN(l.fecha), 'DD/MM/YYYY') as f_ini,
+                                   to_char(MAX(l.fecha), 'DD/MM/YYYY') as f_fin
+                                   FROM sensores s
+                                   LEFT JOIN lecturas l ON l.sensor_id = s.id
+                                   WHERE s.nombre = ?
+                                   GROUP BY s.id, s.nombre, s.version
+                                   ORDER BY s.version DESC");
+        $stmtVers->execute([$nombre]);
+        echo json_encode($stmtVers->fetchAll(PDO::FETCH_ASSOC));
+    } else {
+        echo json_encode([]);
+    }
     exit;
 }
 
@@ -96,16 +129,15 @@ if ($action === 'get_data') {
     exit;
 }
 
-// C. SUBIDA DE ARCHIVOS (SOLO ADMIN Y SUPERADMIN)
+// ==========================================
+// C. SUBIDA DE ARCHIVOS (MODIFICADO PARA HISTORIAL)
+// ==========================================
 if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // --> RESTRICCIÓN DE ROL: Si es cliente, fuera.
     if ($_SESSION['rol'] === 'cliente') {
-        echo json_encode(['success' => false, 'message' => 'Permisos insuficientes. Los clientes no pueden subir datos.']);
-        exit;
+        echo json_encode(['success' => false, 'message' => 'Permisos insuficientes.']); exit;
     }
 
-    // LÓGICA DE SUBIDA (Tu código original)
     $sensor_id = $_POST['sensor_id'] ?? null;
     
     if (!$sensor_id || !isset($_FILES['file'])) {
@@ -113,10 +145,12 @@ if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
+        $fileName = $_FILES['file']['name']; // Nombre original del archivo
         $filePath = $_FILES['file']['tmp_name'];
         $content = file_get_contents($filePath);
         $lines = preg_split('/\r\n|\r|\n/', $content);
         
+        // ... (Tu lógica de parsing de cabeceras se mantiene IGUAL) ...
         $headerIndices = [];
         foreach ($lines as $i => $line) {
             $clean = trim($line);
@@ -124,7 +158,6 @@ if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $headerIndices[] = $i;
             }
         }
-
         if (empty($headerIndices)) throw new Exception("No se encontraron cabeceras válidas.");
 
         $idx_a = $headerIndices[0];
@@ -132,6 +165,7 @@ if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $end_a = $idx_b ? ($idx_b - 2) : count($lines);
         $mergedData = [];
 
+        // ... (Tu función processBlock se mantiene IGUAL) ...
         function processBlock($lines, $start, $end, $axis, &$mergedData) {
             $headerLine = trim($lines[$start]);
             $headers = explode(';', $headerLine);
@@ -162,7 +196,16 @@ if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         processBlock($lines, $idx_a, $end_a, 'a', $mergedData);
         if ($idx_b) processBlock($lines, $idx_b, count($lines), 'b', $mergedData);
 
+        // --- AQUÍ EMPIEZA EL CAMBIO IMPORTANTE ---
         $pdo->beginTransaction();
+
+        // 1. Crear registro en tabla CARGAS
+        $stmtCarga = $pdo->prepare("INSERT INTO cargas (sensor_id, nombre_archivo, usuario) VALUES (?, ?, ?) RETURNING id");
+        $stmtCarga->execute([$sensor_id, $fileName, $_SESSION['usuario']]);
+        $carga_id = $stmtCarga->fetchColumn();
+
+        // 2. Limpiar datos antiguos que coincidan en fecha (para evitar duplicados visuales)
+        // Nota: Esto borra datos viejos de esas fechas, aunque fueran de otra carga. Es necesario para no tener doble dato.
         $fechas = array_keys($mergedData);
         if (!empty($fechas)) {
             $placeholders = implode(',', array_fill(0, count($fechas), '?'));
@@ -170,17 +213,18 @@ if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtDel->execute(array_merge([$sensor_id], $fechas));
         }
 
-        $stmtIns = $pdo->prepare("INSERT INTO lecturas (sensor_id, fecha, profundidad, valor_a, valor_b) VALUES (?, ?, ?, ?, ?)");
+        // 3. Insertar nuevos datos vinculados a la CARGA
+        $stmtIns = $pdo->prepare("INSERT INTO lecturas (sensor_id, carga_id, fecha, profundidad, valor_a, valor_b) VALUES (?, ?, ?, ?, ?, ?)");
         $count = 0;
         foreach ($mergedData as $fecha => $profs) {
             foreach ($profs as $profKey => $vals) {
-                $stmtIns->execute([$sensor_id, $fecha, $profKey, $vals['a'], $vals['b']]);
+                $stmtIns->execute([$sensor_id, $carga_id, $fecha, $profKey, $vals['a'], $vals['b']]);
                 $count++;
             }
         }
 
         $pdo->commit();
-        echo json_encode(['success' => true, 'message' => "Procesados $count registros."]);
+        echo json_encode(['success' => true, 'message' => "Archivo guardado. $count registros procesados."]);
 
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -300,13 +344,16 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // 2. Recoger datos
+    $createVersion = ($_POST['create_version'] ?? '0') === '1';
+    $baseSensorId = $_POST['base_sensor_id'] ?? null;
+
     $nombre = $_POST['nombre'] ?? '';
     $lat = $_POST['latitud'] ?? 0;
     $lon = $_POST['longitud'] ?? 0;
     $nf = $_POST['nf'] ?? 0;
     $lugar = $_POST['lugar'] ?? 'Canal'; // Por defecto Canal
 
-    if (empty($nombre)) {
+    if (!$createVersion && empty($nombre)) {
         echo json_encode(['success' => false, 'message' => 'El nombre es obligatorio']);
         exit;
     }
@@ -327,10 +374,47 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        // 4. Insertar en BD
-        $sql = "INSERT INTO sensores (nombre, latitud, longitud, nf, foto_path, lugar) VALUES (?, ?, ?, ?, ?, ?)";
+        // 4. Si es nueva versión, usamos datos del sensor base
+        if ($createVersion) {
+            if (empty($baseSensorId)) {
+                echo json_encode(['success' => false, 'message' => 'Selecciona el sensor base para crear la versión']);
+                exit;
+            }
+            $stmtBase = $pdo->prepare("SELECT nombre, latitud, longitud, nf, lugar FROM sensores WHERE id = ?");
+            $stmtBase->execute([$baseSensorId]);
+            $base = $stmtBase->fetch(PDO::FETCH_ASSOC);
+            if (!$base) {
+                echo json_encode(['success' => false, 'message' => 'Sensor base no encontrado']);
+                exit;
+            }
+            $nombre = $base['nombre'];
+            $lat = $base['latitud'];
+            $lon = $base['longitud'];
+            $nf = $base['nf'];
+            $lugar = $base['lugar'] ?: 'Canal';
+        } else {
+            // Evitar duplicar nombres si no es nueva versión
+            $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM sensores WHERE nombre = ?");
+            $stmtCheck->execute([$nombre]);
+            if ($stmtCheck->fetchColumn() > 0) {
+                echo json_encode(['success' => false, 'message' => 'Ya existe un sensor con ese nombre. Usa "crear nueva versión".']);
+                exit;
+            }
+        }
+
+        // 5. Calcular versión
+        if ($createVersion) {
+            $stmtVer = $pdo->prepare("SELECT COALESCE(MAX(version), 0) FROM sensores WHERE nombre = ?");
+            $stmtVer->execute([$nombre]);
+            $version = (int)$stmtVer->fetchColumn() + 1;
+        } else {
+            $version = 1;
+        }
+
+        // 6. Insertar en BD
+        $sql = "INSERT INTO sensores (nombre, latitud, longitud, nf, foto_path, lugar, version) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$nombre, $lat, $lon, $nf, $fotoFilename, $lugar]);
+        $stmt->execute([$nombre, $lat, $lon, $nf, $fotoFilename, $lugar, $version]);
 
         echo json_encode(['success' => true, 'message' => 'Sensor añadido correctamente']);
     } catch (PDOException $e) {
@@ -338,4 +422,69 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     exit;
 }
+
+// ==========================================
+// G. OBTENER HISTORIAL DE CARGAS (NUEVO)
+// ==========================================
+if ($action === 'get_uploads') {
+    // Si es superadmin ve todo, si es admin ve todo, cliente no debería entrar aquí pero por si acaso
+    $sql = "SELECT c.id, c.nombre_archivo, to_char(c.fecha_subida, 'DD/MM/YYYY HH24:MI') as fecha_fmt, 
+                   c.usuario, s.nombre as sensor_nombre,
+                   (SELECT COUNT(*) FROM lecturas l WHERE l.carga_id = c.id) as num_datos
+            FROM cargas c
+            JOIN sensores s ON c.sensor_id = s.id
+            ORDER BY c.fecha_subida DESC LIMIT 50";
+    
+    $stmt = $pdo->query($sql);
+    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    exit;
+}
+
+// ==========================================
+// H. BORRAR UNA CARGA (NUEVO)
+// ==========================================
+if ($action === 'delete_upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($_SESSION['rol'] === 'cliente') {
+        echo json_encode(['success' => false, 'message' => 'No autorizado']); exit;
+    }
+
+    $id = $_POST['id'] ?? 0;
+    
+    try {
+        // Al borrar la carga, el ON DELETE CASCADE de Postgres borra las lecturas solas
+        $stmt = $pdo->prepare("DELETE FROM cargas WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        echo json_encode(['success' => true, 'message' => 'Carga y sus datos eliminados correctamente.']);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'Error al borrar: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ==========================================
+// I. ELIMINAR LECTURAS CON PROFUNDIDAD 0 (TODOS LOS INCLINÓMETROS)
+// ==========================================
+if ($action === 'delete_lecturas_profundidad_cero' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($_SESSION['rol'] === 'cliente') {
+        echo json_encode(['success' => false, 'message' => 'No autorizado']); exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("DELETE FROM lecturas WHERE profundidad = 0");
+        $stmt->execute();
+        $deleted = $stmt->rowCount();
+        echo json_encode([
+            'success' => true,
+            'message' => $deleted > 0
+                ? "Se han eliminado $deleted registro(s) con profundidad 0."
+                : 'No había registros con profundidad 0.',
+            'deleted' => $deleted
+        ]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'Error al borrar: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 ?>

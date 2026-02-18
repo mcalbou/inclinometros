@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Visor - Calsens</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <link rel="stylesheet" href="assets/css/estilos_escena_unity.css"> 
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+    <link href="https://unpkg.com/slim-select@latest/dist/slimselect.css" rel="stylesheet">
+</head>
+<body>
+    <header class="scene-header">
+        <div class="scene-header-left">
+            <img src="assets/imagenes/logo_calsens_completo_sinfondo.png" alt="Logo Calsens" class="scene-header-logo">
+            <span id="scene-header-main-title" class="scene-header-title-main">Visor</span>
+            <span class="scene-header-title-divider">|</span>
+            <span id="scene-page-title-dinamico" class="scene-header-page-title">Cargando Modelo...</span>
+            <button id="botonToggleVista" class="scene-header-button-dashboard" style="display:none; margin-left: 15px;" title="Ver Planos de la Obra">
+                <i class="fas fa-chart-line"></i> Visor
+            </button>
+            <!-- Nuevo botón para la vista de todos los sensores -->
+            <a href="#" id="botonTodosSensores" class="scene-header-link" style="display: none; margin-left: 15px;">
+                <i class="fas fa-th"></i> Todos los Sensores
+            </a>
+        </div>
+        <div class="scene-header-right">
+            <a href="informe_datos.php" class="scene-header-link"><i class="fas fa-chart-bar"></i> INFORMES</a>
+    
+            <div id="language-switcher" class="language-switcher">
+                <a href="#" data-lang="es" class="lang-btn active">ES</a>
+                <span>|</span>
+                <a href="#" data-lang="fr" class="lang-btn">FR</a>
+            </div>
+            <button id="toggle-theme-button" class="scene-header-icon" aria-label="Cambiar modo de tema"><i class="fas fa-sun"></i></button>
+            <div class="dropdown">
+                <a class="scene-header-icon" aria-label="Usuario"><i class="fas fa-user"></i></a>
+                <div class="dropdown-content">
+                    <a href="mi_perfil.php"><i class="fas fa-user-circle"></i> Mi Perfil</a>
+                    <a href="api/api_logout.php"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="vista-unificada-container">
+            <div id="plano-principal-centro"></div>
+            <aside id="sensores-sidebar-right" class="sidebar-2d">
+                <div class="sidebar-title-container"><h3>Sensores en Planos</h3></div>
+                <ul id="lista-sensores-sidebar"></ul>
+            </aside>
+        </div>
+
+        <div id="dashboard-container" style="display:none;">
+            <div id="dashboard-toolbar">
+                <div class="toolbar-section-ranges">
+                    <button class="time-range-btn" data-range="day">DÍA</button>
+                    <button class="time-range-btn" data-range="week">SEMANA</button>
+                    <button class="time-range-btn" data-range="month">MES</button>
+                </div>
+            <div class="toolbar-section-custom">
+                <label for="start-time" id="label-start-time">Desde: </label>
+                <input type="text" id="start-time" class="time-picker" placeholder="Seleccionar...">
+                
+                <label for="end-time" id="label-end-time">Hasta: </label>
+                <input type="text" id="end-time" class="time-picker" placeholder="Seleccionar...">
+                
+                <button id="refresh-btn" title="Filtrar por rango de fechas">Filtrar</button>
+            </div>
+                <button id="toggle-custom-chart-creator-btn" class="toolbar-btn" title="Crear un gráfico personalizado">
+                    <i class="fas fa-plus"></i> Crear Gráfico
+                </button>
+            </div>
+            <div id="custom-chart-creator" class="chart-container creator-panel" style="display: none;">
+                <h2>Crear Gráfico Personalizado</h2>
+                <p>Seleccione dos o más sensores para comparar.</p>
+                <div class="creator-form">
+                    <label for="sensor-select-custom">Sensores a visualizar:</label>
+                    <select id="sensor-select-custom" multiple></select>
+                    <button id="create-custom-chart-btn" class="creator-button">Crear Gráfico</button>
+                </div>
+                <p id="custom-chart-message" class="creator-message"></p>
+            </div>
+            <div id="charts-grid">
+                <p class="loading-message">Selecciona un rango de tiempo para cargar los datos...</p>
+                <div id="custom-chart-creator" class="chart-container creator-panel" style="display: none;">
+                    <h2>Crear Gráfico Personalizado</h2>
+                    <p>Seleccione dos o más sensores para comparar.</p>
+                    <div class="creator-form">
+                        <label for="sensor-select-custom">Sensores a visualizar:</label>
+                        <select id="sensor-select-custom" multiple></select>
+                        <button id="create-custom-chart-btn" class="creator-button">Crear Gráfico</button>
+                    </div>
+                    <p id="custom-chart-message" class="creator-message"></p>
+                </div>
+            </div>
+        </div>
+        <div id="todos-sensores-container" style="display:none;">
+            <div id="todos-sensores-grid" class="charts-grid">
+                <!-- Los gráficos individuales se generarán aquí con JavaScript -->
+            </div>
+        </div>
+    </main>
+
+    
+    <div id="variable-select-modal" class="modal-overlay variable-select-modal">
+        <div class="modal-content">
+            <span id="variable-modal-close-btn" class="modal-close-btn">×</span>
+            <h3 id="variable-modal-title">Seleccionar Variable</h3>
+            <div id="variable-buttons-container"></div>
+        </div>
+    </div>
+    
+    <div id="alarm-details-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span id="alarm-details-close-btn" class="modal-close-btn">×</span>
+            <h3 id="alarm-details-title">Detalles de Alarma</h3>
+            <div id="alarm-details-content" class="alarm-details-content">
+                <p id="alarm-details-description"></p>
+                <div id="comments-list" class="comments-list"></div>
+                <form id="comment-form" class="comment-form">
+                    <textarea id="comment-textarea" placeholder="Añadir un comentario..." required></textarea>
+                    <button type="submit">Guardar Comentario</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="group-select-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span id="group-modal-close-btn" class="modal-close-btn">×</span>
+            <h3 id="group-modal-title">Sensores en el Grupo</h3>
+            <div id="group-sensors-list" class="group-sensors-list">
+                <!-- La lista de sensores del grupo se generará aquí -->
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-panel" class="alert-panel minimized">
+        <div class="alert-panel-header">
+            <i class="fas fa-bell"></i>
+            <h3>Alarmas Activas</h3>
+            <div class="alert-summary">
+                <span class="alert-count-item critical"><i class="fas fa-circle"></i> <span id="alert-count-danger">0</span></span>
+                <span class="alert-count-item warning"><i class="fas fa-circle"></i> <span id="alert-count-warning">0</span></span>
+            </div>
+            <button id="alert-panel-toggle-btn" class="alert-panel-toggle-btn">_</button>
+        </div>
+        <div class="alert-panel-body">
+            <div class="alert-filters">
+                <select id="alert-sensor-filter">
+                    <option value="all">Todos los sensores</option>
+                </select>
+            </div>
+            <div class="alert-table-container">
+                <table class="alert-table">
+                    <thead>
+                        <tr>
+                            <th>Elemento</th>
+                            <th>Alarma</th>
+                            <th>Inicio</th>
+                            <th>Reconocida</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alert-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.js"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.2.1/chartjs-plugin-annotation.min.js"></script>
+
+    <!-- ======== ESTOS SON LOS DOS ARCHIVOS IMPORTANTES ======== -->
+    <!-- 1. El estilo para que se vea bien -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@latest/dist/slimselect.css" />
+    <!-- 2. El código para que funcione -->
+    <script src="https://cdn.jsdelivr.net/npm/slim-select@latest/dist/slimselect.min.js"></script>
+    
+    <!-- TUS OTROS ARCHIVOS -->
+    <script src="assets/js/theme-switcher.js"></script>
+    <script src="assets/js/escena_visor.js"></script>
+</body>
+</html>

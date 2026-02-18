@@ -1,4 +1,5 @@
 <?php
+//prueba.php
 // debug_users.php
 header('Content-Type: text/html; charset=utf-8');
 

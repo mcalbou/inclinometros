@@ -3,7 +3,8 @@
 $host = 'localhost';
 $db   = 'inclinometros_db';
 $user = 'postgres';
-$pass = 'DatosBase1'; 
+//$pass = 'DatosBase1'; 
+$pass = 'EstrucDatosAdmin';
 $dsn  = "pgsql:host=$host;port=5432;dbname=$db";
 
 try {

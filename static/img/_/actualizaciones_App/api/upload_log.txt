@@ -1,0 +1,18 @@
+[2025-08-27 12:06:51] --- INICIO DE LA PETICIÓN ---
+[2025-08-27 12:06:51] Paso 1: Verificando método de la petición.
+[2025-08-27 12:06:51] OK: Método es POST.
+[2025-08-27 12:06:51] Paso 2: Verificando archivo subido.
+[2025-08-27 12:06:51] OK: Archivo recibido. Nombre temporal: C:\xampp\tmp\phpE73F.tmp
+[2025-08-27 12:06:51] Paso 3: Verificando obra_id.
+[2025-08-27 12:06:51] OK: obra_id recibida: murcia_yecla
+[2025-08-27 12:06:51] Paso 4: Intentando conectar a la base de datos PostgreSQL.
+[2025-08-27 12:06:51] OK: Conexión a la base de datos exitosa.
+[2025-08-27 12:06:51] Paso 5: Iniciando transacción en la base de datos.
+[2025-08-27 12:06:51] OK: Transacción iniciada.
+[2025-08-27 12:06:51] Paso 6: Abriendo el archivo CSV en: C:\xampp\tmp\phpE73F.tmp
+[2025-08-27 12:06:51] OK: Archivo CSV abierto para lectura.
+[2025-08-27 12:06:51] OK: Consulta SQL preparada.
+[2025-08-27 12:06:51] Paso 7: Empezando a leer el archivo CSV línea por línea.
+[2025-08-27 12:06:51] Saltando cabecera: Timestamp,S1_BA_STRAIN,S1_BA_TEMP,S1_TB_STRAIN,S1_TB_TEMP,S3_BE_STRAIN,S3_BE_TEMP,S4_BG_STRAIN,S4_BG_TEMP,S4_TH_STRAIN,S4_TH_TEMP,S5_BA_STRAIN,S5_BA_TEMP,OTRA_VARIABLE_TEXTO,OTRA_VARIABLE_NUM
+[2025-08-27 12:06:52] ¡¡¡ERROR!!! -> Error al insertar en la base de datos: ERROR:  la sintaxis de entrada no es válida para tipo timestamp with time zone: «10.1»
+CONTEXT:  portal sin nombre, parámetro 3 = '...'
