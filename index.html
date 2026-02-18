@@ -92,6 +92,9 @@
                 <button class="btn btn-outline-danger w-100 btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#userModal">
                     + Nuevo Usuario
                 </button>
+                <button class="btn btn-outline-primary w-100 btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#sensorModal">
+                    + Nuevo Sensor
+                </button>
             </div>
 
             <div class="mt-auto upload-zone p-3 rounded-3 text-center" style="background: #f8fafc; border: 2px dashed #cbd5e1; transition: all 0.3s;">
@@ -239,7 +242,52 @@
     </div>
   </div>
 </div>
-
+<div class="modal fade" id="sensorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold" style="font-size: 1rem;">Registrar Nuevo Sensor</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="createSensorForm">
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Nombre</label>
+                <input type="text" name="nombre" class="form-control" placeholder="Ej: Inclinómetro IN-99" required>
+            </div>
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label small fw-bold text-muted">Latitud</label>
+                    <input type="number" step="any" name="latitud" class="form-control" placeholder="39.4..." required>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label small fw-bold text-muted">Longitud</label>
+                    <input type="number" step="any" name="longitud" class="form-control" placeholder="-0.3..." required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label small fw-bold text-muted">Nivel Freat. (NF)</label>
+                    <input type="number" step="any" name="nf" class="form-control" value="0">
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label small fw-bold text-muted">Ubicación</label>
+                    <select name="lugar" class="form-select">
+                        <option value="Canal">Canal</option>
+                        <option value="Colector">Colector</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Foto (Opcional)</label>
+                <input type="file" name="foto" class="form-control" accept="image/*">
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold">Guardar Sensor</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="app.js"></script>
 

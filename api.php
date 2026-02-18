@@ -288,4 +288,54 @@ if ($action === 'export_csv') {
     fclose($output);
     exit;
 }
+// ==========================================
+// F. AÑADIR NUEVO SENSOR (SOLO ADMIN/SUPERADMIN)
+// ==========================================
+if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+    // 1. Permisos
+    if (!isset($_SESSION['rol']) || ($_SESSION['rol'] !== 'admin' && $_SESSION['rol'] !== 'superAdmin')) {
+        echo json_encode(['success' => false, 'message' => 'Permisos insuficientes.']);
+        exit;
+    }
+
+    // 2. Recoger datos
+    $nombre = $_POST['nombre'] ?? '';
+    $lat = $_POST['latitud'] ?? 0;
+    $lon = $_POST['longitud'] ?? 0;
+    $nf = $_POST['nf'] ?? 0;
+    $lugar = $_POST['lugar'] ?? 'Canal'; // Por defecto Canal
+
+    if (empty($nombre)) {
+        echo json_encode(['success' => false, 'message' => 'El nombre es obligatorio']);
+        exit;
+    }
+
+    // 3. Manejar la Foto
+    $fotoFilename = null;
+    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+        $tmpName = $_FILES['foto']['tmp_name'];
+        $originalName = basename($_FILES['foto']['name']);
+        
+        // Limpiamos el nombre para evitar caracteres raros
+        $cleanName = preg_replace('/[^A-Za-z0-9.\-_]/', '', $originalName);
+        $targetPath = __DIR__ . "/static/img/" . $cleanName;
+
+        if (move_uploaded_file($tmpName, $targetPath)) {
+            $fotoFilename = $cleanName;
+        }
+    }
+
+    try {
+        // 4. Insertar en BD
+        $sql = "INSERT INTO sensores (nombre, latitud, longitud, nf, foto_path, lugar) VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$nombre, $lat, $lon, $nf, $fotoFilename, $lugar]);
+
+        echo json_encode(['success' => true, 'message' => 'Sensor añadido correctamente']);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'Error BD: ' . $e->getMessage()]);
+    }
+    exit;
+}
 ?>

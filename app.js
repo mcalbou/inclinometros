@@ -103,6 +103,46 @@ async function initApp() {
                     showLoading(false);
                 }
             });
+            
+        }
+        // --- NUEVO LISTENER: CREAR SENSOR ---
+        const createSensorForm = document.getElementById('createSensorForm');
+        if(createSensorForm) {
+            createSensorForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                // Recoger datos (incluyendo archivo)
+                const formData = new FormData(e.target);
+                
+                // Cerrar modal
+                const modalEl = document.getElementById('sensorModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+
+                showLoading(true);
+
+                try {
+                    // Enviamos a la nueva acción de la API
+                    const res = await axios.post('api.php?action=add_sensor', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    
+                    if (res.data.success) {
+                        Swal.fire('Guardado', res.data.message, 'success');
+                        e.target.reset(); // Limpiar formulario
+                        
+                        // IMPORTANTE: Recargar la lista de sensores para que salga el nuevo
+                        await loadSensors(); 
+                    } else {
+                        Swal.fire('Error', res.data.message, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    Swal.fire('Error', 'No se pudo crear el sensor', 'error');
+                } finally {
+                    showLoading(false);
+                }
+            });
         }
         // --- LISTENER PARA DESCARGAR CSV (NUEVO) ---
         const btnDownload = document.getElementById('btnDownloadCsv');
@@ -158,15 +198,18 @@ async function loadSensors() {
         if(sel) {
             sel.innerHTML = ''; 
 
-            // --- 1. AÑADIR OPCIÓN POR DEFECTO ---
+            // 1. Opción por defecto (CORREGIDO)
             const defaultOpt = document.createElement('option');
-            defaultOpt.value = ""; // Valor vacío
+            defaultOpt.value = "";
             defaultOpt.textContent = "-- Selecciona un sensor --";
-            defaultOpt.selected = true; // Marcada al inicio
-            defaultOpt.disabled = true; // No se puede volver a elegir una vez cambias
+            
+            defaultOpt.selected = true; // La marcamos como seleccionada
+            defaultOpt.hidden = true;   // La ocultamos del desplegable (truco visual)
+            // defaultOpt.disabled = true; <--- ESTA LÍNEA ERA EL PROBLEMA (Bórrala)
+            
             sel.appendChild(defaultOpt);
 
-            // 2. Crear Grupos
+            // 2. Crear grupos visuales
             const groupCanal = document.createElement('optgroup');
             groupCanal.label = "--- CANAL ---";
             groupCanal.style.color = "#1f77b4";
@@ -174,41 +217,41 @@ async function loadSensors() {
 
             const groupColector = document.createElement('optgroup');
             groupColector.label = "--- COLECTOR ---";
-            groupColector.style.color = "#ff7f0e"; 
+            groupColector.style.color = "#ff7f0e";
             groupColector.style.fontWeight = "bold";
 
             // 3. Clasificar sensores
-            sensores.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.id;
-                opt.textContent = s.nombre;
-                opt.style.color = "#333";
-                opt.style.fontWeight = "normal";
-                
-                // Datos extra
-                opt.dataset.lat = s.latitud;
-                opt.dataset.lon = s.longitud;
-                opt.dataset.nf = s.nf;
-                opt.dataset.foto = s.foto_path;
+            if (Array.isArray(sensores)) {
+                sensores.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.nombre;
+                    opt.style.color = "#333";
+                    opt.style.fontWeight = "normal";
+                    
+                    // Datos extra
+                    opt.dataset.lat = s.latitud;
+                    opt.dataset.lon = s.longitud;
+                    opt.dataset.nf = s.nf;
+                    opt.dataset.foto = s.foto_path;
 
-                // Clasificación por columna 'lugar'
-                const lugar = (s.lugar || 'Canal').toLowerCase().trim();
+                    // Clasificación
+                    const lugar = (s.lugar || 'Canal').toLowerCase().trim();
 
-                if (lugar === 'colector') {
-                    groupColector.appendChild(opt);
-                } else {
-                    groupCanal.appendChild(opt);
-                }
-            });
+                    if (lugar === 'colector') {
+                        groupColector.appendChild(opt);
+                    } else {
+                        groupCanal.appendChild(opt);
+                    }
+                });
+            }
 
-            // 4. Añadir grupos al selector
+            // 4. Añadir grupos
             if (groupCanal.children.length > 0) sel.appendChild(groupCanal);
             if (groupColector.children.length > 0) sel.appendChild(groupColector);
-
-            // --- CAMBIO IMPORTANTE: ---
-            // Hemos BORRADO las líneas que seleccionaban el primero (sel.value = ...)
-            // y la línea que llamaba a updateDashboard().
-            // Así el dashboard se queda "quieto" hasta que el usuario elija algo.
+            
+            // 5. FORZAR LA SELECCIÓN VACÍA (Extra seguridad)
+            sel.value = ""; 
         }
     } catch (err) {
         console.error("Error cargando sensores", err);
