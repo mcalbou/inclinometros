@@ -128,6 +128,7 @@
                                     <select name="lugar" class="form-select">
                                         <option value="Canal">Canal</option>
                                         <option value="Colector">Colector</option>
+                                        <option value="Giorgeta">Giorgeta</option>
                                     </select>
                                 </div>
                             </div>
@@ -239,7 +240,14 @@
                 }
             } catch (err) {
                 console.error(err);
-                Swal.fire('Error', 'Fallo de conexión', 'error');
+                const status = err?.response?.status;
+                const apiMsg = err?.response?.data?.message || err?.response?.data?.error;
+                if (status === 401) {
+                    Swal.fire('Sesión caducada', apiMsg || 'No autorizado. Vuelve a iniciar sesión.', 'warning')
+                        .then(() => { window.location.href = 'login.html'; });
+                    return;
+                }
+                Swal.fire('Error', apiMsg || 'Fallo de conexión', 'error');
             }
         });
     });

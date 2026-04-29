@@ -23,8 +23,10 @@ const SENSOR_TYPE_ALIASES = {
     acelerómetro: 'Acelerómetros',
     acelerometros: 'Acelerómetros',
     acelerómetros: 'Acelerómetros',
-    'long gauge': 'Long gauge',
-    longgauge: 'Long gauge'
+    'long-gauge': 'Long-Gauge',
+    'long-gauge': 'Long-Gauge',
+    'long_gauge': 'Long-Gauge',
+    longgauge: 'Long-Gauge'
 };
 const GROUPED_SENSOR_CONFIG = {
     'Fisurómetros': {
@@ -43,7 +45,7 @@ const GROUPED_SENSOR_CONFIG = {
             { label: 'V6', sensors: ['AC_V6N', 'AC_V6S'] }
         ]
     },
-    'Long gauge': {
+    'Long-Gauge': {
         title: 'Deformaciones',
         yAxisTitle: 'Deformación (µε)',
         charts: [
@@ -190,6 +192,8 @@ function fillSensorSelect(selectedId = '') {
     groupCanal.label = "--- CANAL ---";
     const groupColector = document.createElement('optgroup');
     groupColector.label = "--- COLECTOR ---";
+    const groupGiorgeta = document.createElement('optgroup');
+    groupGiorgeta.label = "--- GIORGETA ---";
     const groupOtros = document.createElement('optgroup');
     groupOtros.label = "--- OTROS ---";
 
@@ -209,6 +213,8 @@ function fillSensorSelect(selectedId = '') {
             groupCanal.appendChild(opt);
         } else if (lugar === 'colector') {
             groupColector.appendChild(opt);
+        } else if (lugar === 'giorgeta') {
+            groupGiorgeta.appendChild(opt);
         } else {
             groupOtros.appendChild(opt);
         }
@@ -216,6 +222,7 @@ function fillSensorSelect(selectedId = '') {
 
     if (groupCanal.children.length > 0) sel.appendChild(groupCanal);
     if (groupColector.children.length > 0) sel.appendChild(groupColector);
+    if (groupGiorgeta.children.length > 0) sel.appendChild(groupGiorgeta);
     if (groupOtros.children.length > 0) sel.appendChild(groupOtros);
 
     const candidate = String(selectedId || '');
