@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(grep -r \"CREATE TABLE\\\\|INSERT INTO\\\\|sensores\\\\|lecturas\\\\|cargas\" /c/xampp/htdocs/inclinometros/*.php)"
+    ]
+  }
+}

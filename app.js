@@ -5,9 +5,227 @@ let mapMarker = null;
 let currentSensorInfo = null;
 let dateSlider = null;
 let depthSlider = null;
+let allSensors = [];
+let activeSensorType = 'Todos';
+let groupedDataCache = {};
 
 const COLOR_A = "#1f77b4";
 const COLOR_B = "#ff7f0e";
+const GROUP_COLOR_PALETTE = ['#3b82f6', '#f59e0b', '#22c55e', '#e11d48', '#8b5cf6', '#06b6d4'];
+const SENSOR_TYPE_ALIASES = {
+    inclinometro: 'Inclinómetro',
+    inclinómetro: 'Inclinómetro',
+    fisurometro: 'Fisurómetros',
+    fisurómetro: 'Fisurómetros',
+    fisurometros: 'Fisurómetros',
+    fisurómetros: 'Fisurómetros',
+    acelerometro: 'Acelerómetros',
+    acelerómetro: 'Acelerómetros',
+    acelerometros: 'Acelerómetros',
+    acelerómetros: 'Acelerómetros',
+    'long gauge': 'Long gauge',
+    longgauge: 'Long gauge'
+};
+const GROUPED_SENSOR_CONFIG = {
+    'Fisurómetros': {
+        title: 'Desplazamientos en juntas',
+        yAxisTitle: 'Desplazamiento (mm)',
+        charts: [
+            { label: 'V5', sensors: ['FIS_V5N', 'FIS_V5S', 'FIS_V5N_LAT', 'FIS_V5S_LAT'] },
+            { label: 'V6', sensors: ['FIS_V6N', 'FIS_V6S'] }
+        ]
+    },
+    'Acelerómetros': {
+        title: 'Acelerómetros',
+        yAxisTitle: 'Aceleración',
+        charts: [
+            { label: 'V5', sensors: ['AC_V5N', 'AC_V5S'] },
+            { label: 'V6', sensors: ['AC_V6N', 'AC_V6S'] }
+        ]
+    },
+    'Long gauge': {
+        title: 'Deformaciones',
+        yAxisTitle: 'Deformación (µε)',
+        charts: [
+            { label: 'P4', sensors: ['LG_P4N', 'LG_P4S', 'LG_P4E', 'LG_P4O'] },
+            { label: 'P5', sensors: ['LG_P5N', 'LG_P5S', 'LG_P5E', 'LG_P5O'] }
+        ]
+    }
+};
+
+function canonicalSensorType(value) {
+    const key = String(value || '').trim().toLowerCase();
+    return SENSOR_TYPE_ALIASES[key] || value;
+}
+
+function normalizeSensorType(sensor) {
+    const raw = sensor?.tipo_sensor || sensor?.tipo || sensor?.sensor_type || '';
+    const clean = canonicalSensorType(String(raw || '').trim());
+    return clean || 'Inclinómetro';
+}
+
+function isGroupedSensorType(type = activeSensorType) {
+    return Object.prototype.hasOwnProperty.call(GROUPED_SENSOR_CONFIG, type);
+}
+
+function getFixedSensorTypes() {
+    const hasInclinometro = allSensors.some(s => normalizeSensorType(s) === 'Inclinómetro');
+    const hasFis = allSensors.some(s => normalizeSensorType(s) === 'Fisurómetros');
+    const hasAc = allSensors.some(s => normalizeSensorType(s) === 'Acelerómetros');
+    const hasLg = allSensors.some(s => normalizeSensorType(s) === 'Long gauge');
+    return [
+        ...(hasInclinometro ? ['Inclinómetro'] : []),
+        ...(hasFis ? ['Fisurómetros'] : []),
+        ...(hasAc ? ['Acelerómetros'] : []),
+        ...(hasLg ? ['Long gauge'] : [])
+    ];
+}
+
+function renderSensorTypeTabs() {
+    const container = document.getElementById('sensorTypeTabs');
+    if (!container) return;
+
+    const types = getFixedSensorTypes();
+
+    if (types.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    if (!activeSensorType || !types.includes(activeSensorType)) {
+        activeSensorType = types[0];
+    }
+
+    container.innerHTML = '';
+    types.forEach(type => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `sensor-type-tab ${type === activeSensorType ? 'active' : ''}`;
+        btn.textContent = type;
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', type === activeSensorType ? 'true' : 'false');
+        btn.dataset.type = type;
+        btn.addEventListener('click', () => {
+            if (activeSensorType === type) return;
+            activeSensorType = type;
+            renderSensorTypeTabs();
+            fillSensorSelect();
+            updateDashboardByMode();
+        });
+        container.appendChild(btn);
+    });
+}
+
+function getSensorsByActiveType() {
+    return allSensors.filter(s => normalizeSensorType(s) === activeSensorType);
+}
+
+function resetDashboardVisuals() {
+    currentData = [];
+    const infoBox = document.getElementById('sensorInfoBox');
+    if (infoBox) infoBox.style.display = 'none';
+    const linkMaps = document.getElementById('linkGoogleMaps');
+    if (linkMaps) linkMaps.style.display = 'none';
+    const img = document.getElementById('sensorPhoto');
+    const txt = document.getElementById('noPhotoText');
+    if (img) img.style.display = 'none';
+    if (txt) {
+        txt.style.display = 'block';
+        txt.textContent = 'Seleccione un sensor';
+    }
+    if (map && mapMarker) {
+        map.removeLayer(mapMarker);
+        mapMarker = null;
+    }
+    setupDates();
+    setupDepths();
+    renderAllCharts();
+}
+
+function applyDashboardMode() {
+    const grouped = isGroupedSensorType();
+    const inclinoSections = document.getElementById('inclinoSections');
+    const groupedSections = document.getElementById('groupedSections');
+    const groupedOnly = document.querySelectorAll('.grouped-only');
+    const inclinoOnly = document.querySelectorAll('.inclino-only');
+
+    if (inclinoSections) inclinoSections.style.display = grouped ? 'none' : 'block';
+    if (groupedSections) groupedSections.style.display = grouped ? 'block' : 'none';
+    groupedOnly.forEach(el => { el.style.display = grouped ? '' : 'none'; });
+    inclinoOnly.forEach(el => { el.style.display = grouped ? 'none' : ''; });
+}
+
+function updateDashboardByMode() {
+    applyDashboardMode();
+    if (isGroupedSensorType()) {
+        updateGroupedDashboard();
+        return;
+    }
+    updateDashboard();
+}
+
+function fillSensorSelect(selectedId = '') {
+    const sel = document.getElementById('sensorSelect');
+    if (!sel) return;
+
+    if (isGroupedSensorType()) {
+        sel.innerHTML = '';
+        const info = document.createElement('option');
+        info.value = '';
+        info.textContent = '-- Vista agrupada por tipo --';
+        sel.appendChild(info);
+        return;
+    }
+
+    sel.innerHTML = '';
+
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = "";
+    defaultOpt.textContent = "-- Selecciona un sensor --";
+    defaultOpt.selected = true;
+    defaultOpt.hidden = true;
+    sel.appendChild(defaultOpt);
+
+    const sensoresFiltrados = getSensorsByActiveType();
+    const groupCanal = document.createElement('optgroup');
+    groupCanal.label = "--- CANAL ---";
+    const groupColector = document.createElement('optgroup');
+    groupColector.label = "--- COLECTOR ---";
+    const groupOtros = document.createElement('optgroup');
+    groupOtros.label = "--- OTROS ---";
+
+    sensoresFiltrados.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.nombre;
+        opt.dataset.lat = s.latitud;
+        opt.dataset.lon = s.longitud;
+        opt.dataset.nf = s.nf;
+        opt.dataset.foto = s.foto_path;
+        opt.dataset.sensorType = normalizeSensorType(s);
+        opt.dataset.lugar = s.lugar || '';
+
+        const lugar = String(s.lugar || '').toLowerCase().trim();
+        if (lugar === 'canal') {
+            groupCanal.appendChild(opt);
+        } else if (lugar === 'colector') {
+            groupColector.appendChild(opt);
+        } else {
+            groupOtros.appendChild(opt);
+        }
+    });
+
+    if (groupCanal.children.length > 0) sel.appendChild(groupCanal);
+    if (groupColector.children.length > 0) sel.appendChild(groupColector);
+    if (groupOtros.children.length > 0) sel.appendChild(groupOtros);
+
+    const candidate = String(selectedId || '');
+    const hasCandidate = candidate && Array.from(sel.options).some(o => o.value === candidate);
+    sel.value = hasCandidate ? candidate : '';
+
+    if (!hasCandidate) {
+        resetDashboardVisuals();
+    }
+}
 
 // --- INICIALIZACIÓN PRINCIPAL ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -54,7 +272,7 @@ async function initApp() {
         
         // Listeners del Dashboard
         const btnUpdate = document.getElementById('btnUpdate');
-        if(btnUpdate) btnUpdate.addEventListener('click', (e) => { e.preventDefault(); updateDashboard(); });
+        if(btnUpdate) btnUpdate.addEventListener('click', (e) => { e.preventDefault(); updateDashboardByMode(); });
         
         const uploadForm = document.getElementById('uploadForm');
         if(uploadForm) uploadForm.addEventListener('submit', handleUpload);
@@ -69,7 +287,7 @@ async function initApp() {
             // Añadimos el evento limpio
             newSelect.addEventListener('change', () => { 
                 console.log("¡Cambio de sensor detectado!"); // DEBUG
-                updateDashboard(); 
+                updateDashboardByMode(); 
             });
         }
         // Listener para Crear Usuario
@@ -131,9 +349,18 @@ async function initApp() {
                     if (res.data.success) {
                         Swal.fire('Guardado', res.data.message, 'success');
                         e.target.reset(); // Limpiar formulario
-                        
+
+                        // Si la API devuelve tipo/id del sensor creado, activamos su pestaña automáticamente
+                        if (res.data.sensor_type) {
+                            activeSensorType = String(res.data.sensor_type);
+                        }
+
                         // IMPORTANTE: Recargar la lista de sensores para que salga el nuevo
-                        await loadSensors(); 
+                        await loadSensors();
+
+                        if (res.data.sensor_id) {
+                            fillSensorSelect(String(res.data.sensor_id));
+                        }
                     } else {
                         Swal.fire('Error', res.data.message, 'error');
                     }
@@ -167,6 +394,8 @@ async function initApp() {
             });
         }
 
+        updateDashboardByMode();
+
     } catch (err) {
         console.error("Error en inicialización:", err);
     }
@@ -199,71 +428,49 @@ function setupUserUI(userData) {
 async function loadSensors() {
     try {
         const res = await axios.get('api.php?action=get_sensors');
-        const sensores = res.data;
+        const sensores = Array.isArray(res.data) ? res.data : [];
         const sel = document.getElementById('sensorSelect');
-        
-        if(sel) {
-            sel.innerHTML = ''; 
-
-            // 1. Opción por defecto (CORREGIDO)
-            const defaultOpt = document.createElement('option');
-            defaultOpt.value = "";
-            defaultOpt.textContent = "-- Selecciona un sensor --";
-            
-            defaultOpt.selected = true; // La marcamos como seleccionada
-            defaultOpt.hidden = true;   // La ocultamos del desplegable (truco visual)
-            // defaultOpt.disabled = true; <--- ESTA LÍNEA ERA EL PROBLEMA (Bórrala)
-            
-            sel.appendChild(defaultOpt);
-
-            // 2. Crear grupos visuales
-            const groupCanal = document.createElement('optgroup');
-            groupCanal.label = "--- CANAL ---";
-            groupCanal.style.color = "#1f77b4";
-            groupCanal.style.fontWeight = "bold";
-
-            const groupColector = document.createElement('optgroup');
-            groupColector.label = "--- COLECTOR ---";
-            groupColector.style.color = "#ff7f0e";
-            groupColector.style.fontWeight = "bold";
-
-            // 3. Clasificar sensores
-            if (Array.isArray(sensores)) {
-                sensores.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.id;
-                    opt.textContent = s.nombre;
-                    opt.style.color = "#333";
-                    opt.style.fontWeight = "normal";
-                    
-                    // Datos extra
-                    opt.dataset.lat = s.latitud;
-                    opt.dataset.lon = s.longitud;
-                    opt.dataset.nf = s.nf;
-                    opt.dataset.foto = s.foto_path;
-
-                    // Clasificación
-                    const lugar = (s.lugar || 'Canal').toLowerCase().trim();
-
-                    if (lugar === 'colector') {
-                        groupColector.appendChild(opt);
-                    } else {
-                        groupCanal.appendChild(opt);
-                    }
-                });
-            }
-
-            // 4. Añadir grupos
-            if (groupCanal.children.length > 0) sel.appendChild(groupCanal);
-            if (groupColector.children.length > 0) sel.appendChild(groupColector);
-            
-            // 5. FORZAR LA SELECCIÓN VACÍA (Extra seguridad)
-            sel.value = ""; 
-        }
+        const selectedBefore = sel ? sel.value : '';
+        allSensors = sensores;
+        renderSensorTypeTabs();
+        fillSensorSelect(selectedBefore);
         fillBaseSensorSelect(sensores);
+        applyDashboardMode();
     } catch (err) {
         console.error("Error cargando sensores", err);
     }
+}
+
+async function loadGroupedData(sensorNames) {
+    const dataBySensor = {};
+    const sensorsByName = {};
+    allSensors.forEach(s => { sensorsByName[s.nombre] = s; });
+
+    for (const sensorName of sensorNames) {
+        const sensor = sensorsByName[sensorName];
+        if (!sensor) {
+            dataBySensor[sensorName] = [];
+            continue;
+        }
+        try {
+            const res = await axios.get(`api.php?action=get_data&id=${sensor.id}`);
+            const rows = Array.isArray(res.data) ? res.data : [];
+            dataBySensor[sensorName] = rows
+                .filter(r => r && r.fecha_str)
+                .map(r => ({ ...r, medida: parseFloat(r.valor_a ?? 0) }));
+        } catch (err) {
+            console.warn(`No se pudieron cargar datos de ${sensorName}`, err);
+            dataBySensor[sensorName] = [];
+        }
+    }
+    return dataBySensor;
+}
+
+function filterGroupedRows(rows) {
+    const start = document.getElementById('groupStartDate')?.value || '';
+    const end = document.getElementById('groupEndDate')?.value || '';
+    if (!start || !end) return rows;
+    return rows.filter(r => r.fecha_str >= start && r.fecha_str <= end);
 }
 
 function fillBaseSensorSelect(sensores) {
@@ -281,6 +488,7 @@ function fillBaseSensorSelect(sensores) {
         opt.dataset.lon = s.longitud;
         opt.dataset.nf = s.nf;
         opt.dataset.lugar = s.lugar;
+        opt.dataset.sensorType = normalizeSensorType(s);
         baseSel.appendChild(opt);
     });
 }
@@ -299,6 +507,7 @@ function setupCreateVersionUI() {
     const lonInput = form ? form.querySelector('input[name="longitud"]') : null;
     const nfInput = form ? form.querySelector('input[name="nf"]') : null;
     const lugarSelect = form ? form.querySelector('select[name="lugar"]') : null;
+    const typeInput = form ? form.querySelector('input[name="sensor_type"]') : null;
 
     const lockFields = (lock) => {
         if (nombreInput) nombreInput.readOnly = lock;
@@ -306,6 +515,7 @@ function setupCreateVersionUI() {
         if (lonInput) lonInput.disabled = lock;
         if (nfInput) nfInput.disabled = lock;
         if (lugarSelect) lugarSelect.disabled = lock;
+        if (typeInput) typeInput.readOnly = lock;
         if (baseSel) baseSel.required = lock;
         if (baseWrap) baseWrap.classList.toggle('d-none', !lock);
     };
@@ -319,6 +529,7 @@ function setupCreateVersionUI() {
         if (lonInput) lonInput.value = opt.dataset.lon || '';
         if (nfInput) nfInput.value = opt.dataset.nf || '';
         if (lugarSelect && opt.dataset.lugar) lugarSelect.value = opt.dataset.lugar;
+        if (typeInput) typeInput.value = opt.dataset.sensorType || 'Inclinómetro';
     };
 
     toggle.addEventListener('change', () => {
@@ -408,6 +619,53 @@ function setupDates() {
     
     document.getElementById('startDate').value = feMinStr;
     document.getElementById('endDate').value = feMaxStr;
+}
+
+function setupGroupDates(groupedSeries) {
+    const slider = document.getElementById('groupDateSlider');
+    if (!slider) return;
+
+    const allDates = [];
+    Object.values(groupedSeries).forEach(points => {
+        points.forEach(p => allDates.push(p.fecha_str));
+    });
+    const uniqueDates = [...new Set(allDates)].sort();
+    if (uniqueDates.length === 0) {
+        if (slider.noUiSlider) slider.noUiSlider.destroy();
+        const startInput = document.getElementById('groupStartDate');
+        const endInput = document.getElementById('groupEndDate');
+        if (startInput) startInput.value = '';
+        if (endInput) endInput.value = '';
+        return;
+    }
+
+    const minTs = new Date(uniqueDates[0]).getTime();
+    const maxTs = new Date(uniqueDates[uniqueDates.length - 1]).getTime();
+    if (slider.noUiSlider) slider.noUiSlider.destroy();
+
+    noUiSlider.create(slider, {
+        start: [minTs, maxTs],
+        connect: true,
+        range: { min: minTs, max: maxTs },
+        step: 86400000,
+        tooltips: [
+            { to: (val) => new Date(parseInt(val, 10)).toLocaleDateString('es-ES') },
+            { to: (val) => new Date(parseInt(val, 10)).toLocaleDateString('es-ES') }
+        ]
+    });
+
+    const startInput = document.getElementById('groupStartDate');
+    const endInput = document.getElementById('groupEndDate');
+    if (startInput) startInput.value = uniqueDates[0];
+    if (endInput) endInput.value = uniqueDates[uniqueDates.length - 1];
+
+    slider.noUiSlider.on('set', (values) => {
+        const start = new Date(parseInt(values[0], 10)).toISOString().split('T')[0];
+        const end = new Date(parseInt(values[1], 10)).toISOString().split('T')[0];
+        if (startInput) startInput.value = start;
+        if (endInput) endInput.value = end;
+        renderGroupedCharts();
+    });
 }
 
 function setupDepths() {
@@ -661,6 +919,126 @@ function renderAllCharts() {
         scene: { xaxis: {title: 'A', range:[-20,20]}, yaxis: {title: 'B', range:[-20,20]}, zaxis: {title: 'Prof', autorange:'reversed'} },
         height: 600
     });
+}
+
+function makePhaseShapes(yMin, yMax) {
+    const range = Math.abs(yMax - yMin);
+    const yText = yMax - (range * 0.08);
+    return {
+        shapes: [
+            { type: 'rect', xref: 'paper', yref: 'y', x0: 0.10, x1: 0.28, y0: yMin, y1: yMax, fillcolor: 'rgba(220, 53, 69, 0.12)', line: { color: 'rgba(220, 53, 69, 0.45)', dash: 'dot', width: 1 } },
+            { type: 'rect', xref: 'paper', yref: 'y', x0: 0.38, x1: 0.58, y0: yMin, y1: yMax, fillcolor: 'rgba(59, 130, 246, 0.12)', line: { color: 'rgba(59, 130, 246, 0.45)', dash: 'dot', width: 1 } },
+            { type: 'rect', xref: 'paper', yref: 'y', x0: 0.74, x1: 0.92, y0: yMin, y1: yMax, fillcolor: 'rgba(34, 197, 94, 0.12)', line: { color: 'rgba(34, 197, 94, 0.45)', dash: 'dot', width: 1 } }
+        ],
+        annotations: [
+            { xref: 'paper', yref: 'y', x: 0.10, y: yText, text: '1A', showarrow: false, font: { color: '#be123c', size: 16, family: 'Inter, sans-serif' } },
+            { xref: 'paper', yref: 'y', x: 0.38, y: yText, text: '1B', showarrow: false, font: { color: '#1d4ed8', size: 16, family: 'Inter, sans-serif' } },
+            { xref: 'paper', yref: 'y', x: 0.74, y: yText, text: '3A', showarrow: false, font: { color: '#15803d', size: 16, family: 'Inter, sans-serif' } }
+        ]
+    };
+}
+
+function makeGroupedTraces(seriesBySensor) {
+    const names = Object.keys(seriesBySensor);
+    const traces = [];
+    const lastLabels = [];
+    const values = [];
+
+    names.forEach((sensorName, idx) => {
+        const rows = filterGroupedRows(seriesBySensor[sensorName] || []);
+        if (rows.length === 0) return;
+        const sortedRows = [...rows].sort((a, b) => a.fecha_str.localeCompare(b.fecha_str));
+        const color = GROUP_COLOR_PALETTE[idx % GROUP_COLOR_PALETTE.length];
+        sortedRows.forEach(r => {
+            if (!Number.isNaN(r.medida)) values.push(r.medida);
+        });
+
+        traces.push({
+            x: sortedRows.map(r => r.fecha_str),
+            y: sortedRows.map(r => r.medida),
+            mode: 'lines',
+            type: 'scatter',
+            name: sensorName,
+            line: { width: 1.7, color }
+        });
+
+        const last = sortedRows[sortedRows.length - 1];
+        if (last && Number.isFinite(last.medida)) {
+            lastLabels.push({
+                x: last.fecha_str,
+                y: last.medida,
+                text: `${last.medida.toFixed(2)} ${activeSensorType === 'Long gauge' ? 'µε' : 'mm'}`,
+                showarrow: false,
+                xanchor: 'left',
+                yanchor: 'middle',
+                bgcolor: 'rgba(255,255,255,0.7)',
+                bordercolor: color,
+                borderwidth: 1,
+                font: { color, size: 11 }
+            });
+        }
+    });
+
+    if (values.length === 0) {
+        return { traces: [], yMin: -1, yMax: 1, annotations: [] };
+    }
+    const minV = Math.min(...values);
+    const maxV = Math.max(...values);
+    const margin = Math.max((maxV - minV) * 0.12, 0.1);
+    return { traces, yMin: minV - margin, yMax: maxV + margin, annotations: lastLabels };
+}
+
+function renderGroupedCharts() {
+    const cfg = GROUPED_SENSOR_CONFIG[activeSensorType];
+    if (!cfg) return;
+
+    const groupedTitle = document.getElementById('groupedTitle');
+    if (groupedTitle) groupedTitle.textContent = cfg.title;
+
+    cfg.charts.forEach((chartCfg, idx) => {
+        const chartId = idx === 0 ? 'groupChart1' : 'groupChart2';
+        const chartWrap = idx === 0 ? null : document.getElementById('groupChart2Wrap');
+        if (idx === 1 && chartWrap) {
+            chartWrap.style.display = cfg.charts[1] ? 'block' : 'none';
+        }
+        if (!chartCfg) return;
+        const seriesBySensor = {};
+        chartCfg.sensors.forEach(sensorName => {
+            seriesBySensor[sensorName] = groupedDataCache[sensorName] || [];
+        });
+
+        const { traces, yMin, yMax, annotations } = makeGroupedTraces(seriesBySensor);
+        const phase = makePhaseShapes(yMin, yMax);
+        const layout = {
+            title: cfg.title,
+            xaxis: { title: 'Fecha y hora', type: 'date' },
+            yaxis: { title: cfg.yAxisTitle, range: [yMin, yMax] },
+            legend: { orientation: 'h', y: -0.20 },
+            hovermode: 'x unified',
+            shapes: phase.shapes,
+            annotations: [...phase.annotations, ...annotations],
+            plot_bgcolor: '#f4f4f5',
+            paper_bgcolor: '#f4f4f5'
+        };
+        Plotly.newPlot(chartId, traces, layout, { responsive: true });
+    });
+}
+
+async function updateGroupedDashboard() {
+    const cfg = GROUPED_SENSOR_CONFIG[activeSensorType];
+    if (!cfg) return;
+    showLoading(true);
+    try {
+        const allNames = [...new Set(cfg.charts.flatMap(chart => chart.sensors))];
+        groupedDataCache = await loadGroupedData(allNames);
+        setupGroupDates(groupedDataCache);
+        renderGroupedCharts();
+    } catch (err) {
+        console.error('Error cargando datos agrupados', err);
+        Swal.fire('Error', 'No se pudieron cargar los datos agrupados', 'error');
+    } finally {
+        showLoading(false);
+    }
 }
 
 function initMap() {

@@ -20,6 +20,17 @@ try {
 
 $action = $_GET['action'] ?? '';
 
+function sensoresHasColumn(PDO $pdo, string $column): bool {
+    static $cache = [];
+    if (array_key_exists($column, $cache)) {
+        return $cache[$column];
+    }
+    $stmt = $pdo->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sensores' AND column_name = ? LIMIT 1");
+    $stmt->execute([$column]);
+    $cache[$column] = (bool) $stmt->fetchColumn();
+    return $cache[$column];
+}
+
 // ==========================================
 // 1. ACCIONES PÚBLICAS (LOGIN)
 // ==========================================
@@ -80,9 +91,12 @@ if (!isset($_SESSION['user_id'])) {
 
 // A. OBTENER SENSORES (SOLO LOS ACTUALES PARA EL DESPLEGABLE)
 if ($action === 'get_sensors') {
+    $hasTipoSensor = sensoresHasColumn($pdo, 'tipo_sensor');
+    $tipoSelect = $hasTipoSensor ? 'tipo_sensor' : "'Inclinómetro' AS tipo_sensor";
+
     // Usamos DISTINCT ON en Postgres para sacar solo la última versión de cada nombre
     // Ordenamos por nombre y luego por versión descendente (la más alta primero)
-    $sql = "SELECT DISTINCT ON (nombre) * 
+    $sql = "SELECT DISTINCT ON (nombre) id, nombre, version, latitud, longitud, nf, lugar, foto_path, $tipoSelect
             FROM sensores 
             ORDER BY nombre, version DESC";
             
@@ -352,6 +366,10 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $lon = $_POST['longitud'] ?? 0;
     $nf = $_POST['nf'] ?? 0;
     $lugar = $_POST['lugar'] ?? 'Canal'; // Por defecto Canal
+    $sensorType = trim($_POST['sensor_type'] ?? 'Inclinómetro');
+    if ($sensorType === '') {
+        $sensorType = 'Inclinómetro';
+    }
 
     if (!$createVersion && empty($nombre)) {
         echo json_encode(['success' => false, 'message' => 'El nombre es obligatorio']);
@@ -380,7 +398,9 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => false, 'message' => 'Selecciona el sensor base para crear la versión']);
                 exit;
             }
-            $stmtBase = $pdo->prepare("SELECT nombre, latitud, longitud, nf, lugar FROM sensores WHERE id = ?");
+            $hasTipoSensor = sensoresHasColumn($pdo, 'tipo_sensor');
+            $baseSelect = $hasTipoSensor ? 'nombre, latitud, longitud, nf, lugar, tipo_sensor' : "nombre, latitud, longitud, nf, lugar, 'Inclinómetro' AS tipo_sensor";
+            $stmtBase = $pdo->prepare("SELECT $baseSelect FROM sensores WHERE id = ?");
             $stmtBase->execute([$baseSensorId]);
             $base = $stmtBase->fetch(PDO::FETCH_ASSOC);
             if (!$base) {
@@ -392,6 +412,8 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $lon = $base['longitud'];
             $nf = $base['nf'];
             $lugar = $base['lugar'] ?: 'Canal';
+            $sensorType = trim($base['tipo_sensor'] ?? 'Inclinómetro');
+            if ($sensorType === '') $sensorType = 'Inclinómetro';
         } else {
             // Evitar duplicar nombres si no es nueva versión
             $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM sensores WHERE nombre = ?");
@@ -412,11 +434,24 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 6. Insertar en BD
-        $sql = "INSERT INTO sensores (nombre, latitud, longitud, nf, foto_path, lugar, version) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$nombre, $lat, $lon, $nf, $fotoFilename, $lugar, $version]);
+        $hasTipoSensor = sensoresHasColumn($pdo, 'tipo_sensor');
+        if ($hasTipoSensor) {
+            $sql = "INSERT INTO sensores (nombre, latitud, longitud, nf, foto_path, lugar, version, tipo_sensor) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$nombre, $lat, $lon, $nf, $fotoFilename, $lugar, $version, $sensorType]);
+        } else {
+            $sql = "INSERT INTO sensores (nombre, latitud, longitud, nf, foto_path, lugar, version) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$nombre, $lat, $lon, $nf, $fotoFilename, $lugar, $version]);
+        }
+        $newSensorId = $stmt->fetchColumn();
 
-        echo json_encode(['success' => true, 'message' => 'Sensor añadido correctamente']);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Sensor añadido correctamente',
+            'sensor_id' => $newSensorId,
+            'sensor_type' => $sensorType
+        ]);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Error BD: ' . $e->getMessage()]);
     }
@@ -424,7 +459,116 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ==========================================
-// G. OBTENER HISTORIAL DE CARGAS (NUEVO)
+// G. ACTUALIZAR NIVEL FREÁTICO (SOLO ADMIN/SUPERADMIN)
+// ==========================================
+if ($action === 'update_sensor_nf' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['rol']) || ($_SESSION['rol'] !== 'admin' && $_SESSION['rol'] !== 'superAdmin')) {
+        echo json_encode(['success' => false, 'message' => 'Permisos insuficientes.']);
+        exit;
+    }
+
+    $sensorId = $_POST['sensor_id'] ?? 0;
+    $newNf = $_POST['new_nf'] ?? null;
+
+    if (empty($sensorId) || $newNf === null || $newNf === '') {
+        echo json_encode(['success' => false, 'message' => 'Faltan datos obligatorios']);
+        exit;
+    }
+
+    if (!is_numeric($newNf)) {
+        echo json_encode(['success' => false, 'message' => 'El nuevo nivel freático debe ser numérico']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmtCurrent = $pdo->prepare("SELECT nombre, nf FROM sensores WHERE id = ? FOR UPDATE");
+        $stmtCurrent->execute([$sensorId]);
+        $sensor = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
+
+        if (!$sensor) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Sensor no encontrado']);
+            exit;
+        }
+
+        $oldNf = $sensor['nf'];
+        $sensorName = $sensor['nombre'];
+        if ((float)$oldNf === (float)$newNf) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'El nuevo nivel freático es igual al actual']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("UPDATE sensores SET nf = ? WHERE id = ?");
+        $stmt->execute([$newNf, $sensorId]);
+
+        if ($stmt->rowCount() === 0) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Sensor no encontrado o sin cambios']);
+            exit;
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS historial_nf (
+            id SERIAL PRIMARY KEY,
+            sensor_id INTEGER NOT NULL REFERENCES sensores(id) ON DELETE CASCADE,
+            sensor_nombre VARCHAR(255) NOT NULL,
+            nf_anterior NUMERIC,
+            nf_nuevo NUMERIC NOT NULL,
+            usuario VARCHAR(255) NOT NULL,
+            fecha_cambio TIMESTAMP NOT NULL DEFAULT NOW()
+        )");
+
+        $stmtLog = $pdo->prepare("INSERT INTO historial_nf (sensor_id, sensor_nombre, nf_anterior, nf_nuevo, usuario)
+                                  VALUES (?, ?, ?, ?, ?)");
+        $stmtLog->execute([$sensorId, $sensorName, $oldNf, $newNf, $_SESSION['usuario'] ?? 'desconocido']);
+
+        $pdo->commit();
+        echo json_encode(['success' => true, 'message' => 'Nivel freático actualizado correctamente']);
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        echo json_encode(['success' => false, 'message' => 'Error BD: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ==========================================
+// H. OBTENER HISTORIAL DE CAMBIOS DE NF
+// ==========================================
+if ($action === 'get_nf_history') {
+    if (!isset($_SESSION['rol']) || ($_SESSION['rol'] !== 'admin' && $_SESSION['rol'] !== 'superAdmin')) {
+        echo json_encode(['success' => false, 'message' => 'Permisos insuficientes.']);
+        exit;
+    }
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS historial_nf (
+            id SERIAL PRIMARY KEY,
+            sensor_id INTEGER NOT NULL REFERENCES sensores(id) ON DELETE CASCADE,
+            sensor_nombre VARCHAR(255) NOT NULL,
+            nf_anterior NUMERIC,
+            nf_nuevo NUMERIC NOT NULL,
+            usuario VARCHAR(255) NOT NULL,
+            fecha_cambio TIMESTAMP NOT NULL DEFAULT NOW()
+        )");
+
+        $stmt = $pdo->query("SELECT sensor_nombre, nf_anterior, nf_nuevo, usuario,
+                                    to_char(fecha_cambio, 'DD/MM/YYYY HH24:MI') AS fecha_fmt
+                             FROM historial_nf
+                             ORDER BY fecha_cambio DESC
+                             LIMIT 20");
+        echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'Error BD: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ==========================================
+// I. OBTENER HISTORIAL DE CARGAS (NUEVO)
 // ==========================================
 if ($action === 'get_uploads') {
     // Si es superadmin ve todo, si es admin ve todo, cliente no debería entrar aquí pero por si acaso
@@ -441,7 +585,7 @@ if ($action === 'get_uploads') {
 }
 
 // ==========================================
-// H. BORRAR UNA CARGA (NUEVO)
+// J. BORRAR UNA CARGA (NUEVO)
 // ==========================================
 if ($action === 'delete_upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($_SESSION['rol'] === 'cliente') {
@@ -463,7 +607,7 @@ if ($action === 'delete_upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ==========================================
-// I. ELIMINAR LECTURAS CON PROFUNDIDAD 0 (TODOS LOS INCLINÓMETROS)
+// K. ELIMINAR LECTURAS CON PROFUNDIDAD 0 (TODOS LOS INCLINÓMETROS)
 // ==========================================
 if ($action === 'delete_lecturas_profundidad_cero' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($_SESSION['rol'] === 'cliente') {

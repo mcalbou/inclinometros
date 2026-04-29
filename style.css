@@ -161,6 +161,34 @@ hr { border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0; }
     padding: 3rem 4rem;
 }
 
+.sensor-type-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.sensor-type-tab {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.sensor-type-tab:hover {
+    border-color: #5c87b2;
+    color: #5c87b2;
+}
+
+.sensor-type-tab.active {
+    border-color: #5c87b2;
+    background: #5c87b2;
+    color: #ffffff;
+}
+
 h1 {
     font-size: 2.25rem;
     font-weight: 800;
@@ -575,6 +603,23 @@ h1 {
     margin-left: 25px !important;  /* Empuja la barra a la derecha */
     margin-right: 25px !important; /* Empuja la barra a la izquierda */
     width: auto !important;        /* Deja que el navegador calcule el ancho restante */
+}
+
+#groupDateSlider {
+    height: 6px;
+    border: none;
+    border-radius: 3px;
+    background: #e2e8f0;
+    box-shadow: none;
+    margin-top: 40px;
+    margin-bottom: 50px !important;
+    margin-left: 25px !important;
+    margin-right: 25px !important;
+    width: auto !important;
+}
+
+#groupDateSlider .noUi-connect {
+    background: #5c87b2;
 }
 
 /* 2. TRUCO DE ALINEACIÓN "HACIA ADENTRO" */

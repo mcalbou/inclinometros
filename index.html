@@ -45,12 +45,12 @@
             <div class="control-group">
                 <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size: 0.75rem; letter-spacing: 1px;">Configuración</h6>
                 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" style="font-size: 0.9rem;">Inclinómetro</label>
+                <div class="mb-3 inclino-only">
+                    <label class="form-label fw-semibold" style="font-size: 0.9rem;">Sensor</label>
                     <select id="sensorSelect" class="form-select shadow-sm border-0 bg-light"></select>
                 </div>
 
-                <div id="sensorInfoBox" class="card shadow-sm border-0 mb-4" style="display:none; background: #e0f2fe; border-left: 4px solid #0ea5e9 !important;">
+                <div id="sensorInfoBox" class="card shadow-sm border-0 mb-4 inclino-only" style="display:none; background: #e0f2fe; border-left: 4px solid #0ea5e9 !important;">
                     <div class="card-body p-2">
                         <small class="text-primary fw-bold">DATOS DEL SENSOR</small>
                         <div style="font-size: 0.85rem; line-height: 1.4;" class="mt-1 text-dark">
@@ -60,13 +60,22 @@
                     </div>
                 </div>
 
-                <button id="btnVersions" class="btn btn-sm btn-outline-secondary w-100 mb-3 shadow-sm" style="display:none; border-style: dashed;">
+                <button id="btnVersions" class="btn btn-sm btn-outline-secondary w-100 mb-3 shadow-sm inclino-only" style="display:none; border-style: dashed;">
                     Otras Versiones
                 </button>
 
                 <hr class="my-4 opacity-25">
 
-                <div class="mb-3">
+                <div class="mb-3 grouped-only" style="display:none;">
+                    <label class="sidebar-label">Rango de Fechas (gráficas agrupadas):</label>
+                    <div class="px-2 mt-5 mb-4">
+                        <div id="groupDateSlider"></div>
+                    </div>
+                    <input type="hidden" id="groupStartDate">
+                    <input type="hidden" id="groupEndDate">
+                </div>
+
+                <div class="mb-3 inclino-only">
                     <label class="sidebar-label">Rango de Fechas:</label>
                     <div class="px-2 mt-5 mb-4"> 
                         <div id="dateSlider"></div>
@@ -77,7 +86,7 @@
 
                 <hr class="my-4 opacity-25">
 
-                <div class="mb-4">
+                <div class="mb-4 inclino-only">
                     <label class="sidebar-label">Profundidad (Series/Polar):</label>
                     <div class="px-2 mt-5 mb-4">
                         <div id="depthSlider"></div>
@@ -122,7 +131,9 @@
             </div>
             
             <div id="alertContainer"></div>
+            <div id="sensorTypeTabs" class="sensor-type-tabs mb-4" role="tablist" aria-label="Tipos de sensor"></div>
 
+            <div id="inclinoSections">
             <h3>Información de ubicación</h3>
             <div class="row g-3 mb-4">
                 <div class="col-md-6"> 
@@ -210,6 +221,23 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <div id="groupedSections" style="display:none;">
+                <h3 class="mt-4" id="groupedTitle">Gráficas agrupadas</h3>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <div class="vis-container">
+                            <div id="groupChart1" style="width:100%; height:460px;"></div>
+                        </div>
+                    </div>
+                    <div class="col-12" id="groupChart2Wrap">
+                        <div class="vis-container">
+                            <div id="groupChart2" style="width:100%; height:460px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </div> </div> </div> <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -270,6 +298,10 @@
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">Nombre</label>
                 <input type="text" name="nombre" class="form-control" placeholder="Ej: Inclinómetro IN-99" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Tipo de sensor</label>
+                <input type="text" name="sensor_type" class="form-control" placeholder="Ej: Inclinómetro" value="Inclinómetro">
             </div>
             <div class="row">
                 <div class="col-6 mb-3">

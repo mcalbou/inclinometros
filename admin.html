@@ -102,6 +102,10 @@
                                 <label class="form-label fw-bold small text-secondary">NOMBRE DEL SENSOR</label>
                                 <input type="text" name="nombre" class="form-control" placeholder="Ej: IN-25" required>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-secondary">TIPO DE SENSOR</label>
+                                <input type="text" name="sensor_type" class="form-control" placeholder="Ej: Inclinómetro" value="Inclinómetro">
+                            </div>
                             
                             <div class="row">
                                 <div class="col-6 mb-3">
@@ -139,6 +143,46 @@
                         </form>
                     </div>
                 </div>
+
+                <!-- COLUMNA COMPLETA: CAMBIO DE NIVEL FREÁTICO -->
+                <div class="col-12 mb-4">
+                    <div class="vis-container">
+                        <div class="d-flex align-items-center mb-3">
+                            <span style="font-size: 1.5rem; margin-right: 1px;"></span>
+                            <h3 class="m-0">Cambiar Nivel Freático</h3>
+                        </div>
+                        <p class="text-muted small mb-4">Actualiza el NF de un sensor ya existente.</p>
+
+                        <form id="updateNfForm">
+                            <div class="row">
+                                <div class="col-lg-4 mb-3">
+                                    <label class="form-label fw-bold small text-secondary">SELECCIONAR SENSOR</label>
+                                    <select id="nfSensorSelect" name="sensor_id" class="form-select" required>
+                                        <option value="">-- Selecciona sensor --</option>
+                                    </select>
+                                </div>
+                                <div class="col-lg-4 mb-3">
+                                    <label class="form-label fw-bold small text-secondary">ANTIGUO NIVEL FREÁTICO</label>
+                                    <input id="oldNfInput" type="number" step="any" class="form-control" readonly>
+                                </div>
+                                <div class="col-lg-4 mb-3">
+                                    <label class="form-label fw-bold small text-secondary">NUEVO NIVEL FREÁTICO</label>
+                                    <input id="newNfInput" type="number" step="any" name="new_nf" class="form-control" required>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-warning fw-bold px-4">
+                                ACTUALIZAR NF
+                            </button>
+                        </form>
+
+                        <hr class="my-4">
+                        <h5 class="mb-3">Historial reciente de cambios de NF</h5>
+                        <div id="nfHistoryContainer" class="table-responsive">
+                            <div class="text-muted small">Cargando historial...</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -173,6 +217,8 @@
         // 2. CREAR SENSOR
         loadSensorsForAdmin();
         setupCreateVersionUI();
+        setupUpdateNfUI();
+        loadNfHistory();
         document.getElementById('createSensorForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
@@ -186,6 +232,8 @@
                 if (res.data.success) {
                     Swal.fire('Guardado', res.data.message, 'success');
                     e.target.reset();
+                    await loadSensorsForAdmin();
+                    await loadNfHistory();
                 } else {
                     Swal.fire('Error', res.data.message, 'error');
                 }
@@ -214,8 +262,10 @@
         try {
             const res = await axios.get('api.php?action=get_sensors');
             const baseSel = document.getElementById('baseSensorSelect');
+            const nfSel = document.getElementById('nfSensorSelect');
             if (!baseSel) return;
             baseSel.innerHTML = '<option value="">-- Selecciona sensor --</option>';
+            if (nfSel) nfSel.innerHTML = '<option value="">-- Selecciona sensor --</option>';
             res.data.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
@@ -224,7 +274,16 @@
                 opt.dataset.lon = s.longitud;
                 opt.dataset.nf = s.nf;
                 opt.dataset.lugar = s.lugar;
+                opt.dataset.sensorType = s.tipo_sensor || s.tipo || s.sensor_type || 'Inclinómetro';
                 baseSel.appendChild(opt);
+
+                if (nfSel) {
+                    const nfOpt = document.createElement('option');
+                    nfOpt.value = s.id;
+                    nfOpt.textContent = s.nombre;
+                    nfOpt.dataset.nf = s.nf ?? '';
+                    nfSel.appendChild(nfOpt);
+                }
             });
         } catch(err) {
             console.error(err);
@@ -245,6 +304,7 @@
         const lonInput = form ? form.querySelector('input[name="longitud"]') : null;
         const nfInput = form ? form.querySelector('input[name="nf"]') : null;
         const lugarSelect = form ? form.querySelector('select[name="lugar"]') : null;
+        const typeInput = form ? form.querySelector('input[name="sensor_type"]') : null;
 
         const lockFields = (lock) => {
             if (nombreInput) nombreInput.readOnly = lock;
@@ -252,6 +312,7 @@
             if (lonInput) lonInput.disabled = lock;
             if (nfInput) nfInput.disabled = lock;
             if (lugarSelect) lugarSelect.disabled = lock;
+            if (typeInput) typeInput.readOnly = lock;
             if (baseSel) baseSel.required = lock;
             if (baseWrap) baseWrap.classList.toggle('d-none', !lock);
         };
@@ -265,6 +326,7 @@
             if (lonInput) lonInput.value = opt.dataset.lon || '';
             if (nfInput) nfInput.value = opt.dataset.nf || '';
             if (lugarSelect && opt.dataset.lugar) lugarSelect.value = opt.dataset.lugar;
+            if (typeInput) typeInput.value = opt.dataset.sensorType || 'Inclinómetro';
         };
 
         toggle.addEventListener('change', () => {
@@ -279,6 +341,102 @@
                 if (toggle.checked) applyBaseToFields();
             });
         }
+    }
+
+    function setupUpdateNfUI() {
+        const form = document.getElementById('updateNfForm');
+        const sensorSelect = document.getElementById('nfSensorSelect');
+        const oldNfInput = document.getElementById('oldNfInput');
+        const newNfInput = document.getElementById('newNfInput');
+
+        if (!form || !sensorSelect || !oldNfInput || !newNfInput) return;
+
+        sensorSelect.addEventListener('change', () => {
+            const selected = sensorSelect.options[sensorSelect.selectedIndex];
+            const currentNf = selected && selected.value ? selected.dataset.nf : '';
+            oldNfInput.value = currentNf !== undefined ? currentNf : '';
+            newNfInput.value = currentNf !== undefined ? currentNf : '';
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            try {
+                Swal.showLoading();
+                const res = await axios.post('api.php?action=update_sensor_nf', formData);
+
+                if (res.data.success) {
+                    Swal.fire('Actualizado', res.data.message, 'success');
+                    await loadSensorsForAdmin();
+                    await loadNfHistory();
+                    sensorSelect.value = '';
+                    oldNfInput.value = '';
+                    newNfInput.value = '';
+                } else {
+                    Swal.fire('Error', res.data.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'Fallo de conexión', 'error');
+            }
+        });
+    }
+
+    async function loadNfHistory() {
+        const container = document.getElementById('nfHistoryContainer');
+        if (!container) return;
+
+        try {
+            const res = await axios.get('api.php?action=get_nf_history');
+            if (!res.data.success) {
+                container.innerHTML = `<div class="text-danger small">${res.data.message || 'No se pudo cargar el historial'}</div>`;
+                return;
+            }
+
+            const rows = Array.isArray(res.data.data) ? res.data.data : [];
+            if (rows.length === 0) {
+                container.innerHTML = '<div class="text-muted small">Aún no hay cambios registrados.</div>';
+                return;
+            }
+
+            const body = rows.map(row => `
+                <tr>
+                    <td>${escapeHtml(row.sensor_nombre || '')}</td>
+                    <td>${row.nf_anterior ?? ''}</td>
+                    <td>${row.nf_nuevo ?? ''}</td>
+                    <td>${escapeHtml(row.usuario || '')}</td>
+                    <td>${escapeHtml(row.fecha_fmt || '')}</td>
+                </tr>
+            `).join('');
+
+            container.innerHTML = `
+                <table class="table table-sm table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sensor</th>
+                            <th>NF Antiguo</th>
+                            <th>NF Nuevo</th>
+                            <th>Usuario</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>${body}</tbody>
+                </table>
+            `;
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = '<div class="text-danger small">Error al cargar el historial.</div>';
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
     }
 </script>
 </body>
