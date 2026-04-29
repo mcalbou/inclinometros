@@ -2,6 +2,8 @@
 let currentData = [];
 let map = null;
 let mapMarker = null;
+let groupedMap = null;
+let groupedMarkersLayer = null;
 let currentSensorInfo = null;
 let dateSlider = null;
 let depthSlider = null;
@@ -23,9 +25,11 @@ const SENSOR_TYPE_ALIASES = {
     acelerómetro: 'Acelerómetros',
     acelerometros: 'Acelerómetros',
     acelerómetros: 'Acelerómetros',
-    'long-gauge': 'Long-Gauge',
+    'long gauge': 'Long-Gauge',
     'long-gauge': 'Long-Gauge',
     'long_gauge': 'Long-Gauge',
+    'long–gauge': 'Long-Gauge',
+    'long—gauge': 'Long-Gauge',
     longgauge: 'Long-Gauge'
 };
 const GROUPED_SENSOR_CONFIG = {
@@ -74,12 +78,12 @@ function getFixedSensorTypes() {
     const hasInclinometro = allSensors.some(s => normalizeSensorType(s) === 'Inclinómetro');
     const hasFis = allSensors.some(s => normalizeSensorType(s) === 'Fisurómetros');
     const hasAc = allSensors.some(s => normalizeSensorType(s) === 'Acelerómetros');
-    const hasLg = allSensors.some(s => normalizeSensorType(s) === 'Long gauge');
+    const hasLg = allSensors.some(s => normalizeSensorType(s) === 'Long-Gauge');
     return [
         ...(hasInclinometro ? ['Inclinómetro'] : []),
         ...(hasFis ? ['Fisurómetros'] : []),
         ...(hasAc ? ['Acelerómetros'] : []),
-        ...(hasLg ? ['Long gauge'] : [])
+        ...(hasLg ? ['Long-Gauge'] : [])
     ];
 }
 
@@ -154,6 +158,14 @@ function applyDashboardMode() {
     if (groupedSections) groupedSections.style.display = grouped ? 'block' : 'none';
     groupedOnly.forEach(el => { el.style.display = grouped ? '' : 'none'; });
     inclinoOnly.forEach(el => { el.style.display = grouped ? 'none' : ''; });
+
+    // Leaflet necesita recalcular tamaño cuando el contenedor pasa de hidden a visible.
+    if (grouped && groupedMap) {
+        setTimeout(() => {
+            groupedMap.invalidateSize();
+            updateGroupedMapMarkers();
+        }, 80);
+    }
 }
 
 function updateDashboardByMode() {
@@ -274,6 +286,7 @@ async function initApp() {
 
         // Cargar datos iniciales
         initMap();
+        initGroupedMap();
         await loadSensors();
         setupCreateVersionUI();
         
@@ -974,7 +987,7 @@ function makeGroupedTraces(seriesBySensor) {
             lastLabels.push({
                 x: last.fecha_str,
                 y: last.medida,
-                text: `${last.medida.toFixed(2)} ${activeSensorType === 'Long gauge' ? 'µε' : 'mm'}`,
+                text: `${last.medida.toFixed(2)} ${activeSensorType === 'Long-Gauge' ? 'µε' : 'mm'}`,
                 showarrow: false,
                 xanchor: 'left',
                 yanchor: 'middle',
@@ -1015,15 +1028,13 @@ function renderGroupedCharts() {
         });
 
         const { traces, yMin, yMax, annotations } = makeGroupedTraces(seriesBySensor);
-        const phase = makePhaseShapes(yMin, yMax);
         const layout = {
             title: cfg.title,
             xaxis: { title: 'Fecha y hora', type: 'date' },
             yaxis: { title: cfg.yAxisTitle, range: [yMin, yMax] },
             legend: { orientation: 'h', y: -0.20 },
             hovermode: 'x unified',
-            shapes: phase.shapes,
-            annotations: [...phase.annotations, ...annotations],
+            annotations: [...annotations],
             plot_bgcolor: '#f4f4f5',
             paper_bgcolor: '#f4f4f5'
         };
@@ -1038,6 +1049,7 @@ async function updateGroupedDashboard() {
     try {
         const allNames = [...new Set(cfg.charts.flatMap(chart => chart.sensors))];
         groupedDataCache = await loadGroupedData(allNames);
+        updateGroupedMapMarkers();
         setupGroupDates(groupedDataCache);
         renderGroupedCharts();
     } catch (err) {
@@ -1053,6 +1065,82 @@ function initMap() {
     map = L.map('map').setView([40.416, -3.703], 6);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
     setTimeout(() => { map.invalidateSize(); }, 1000);
+}
+
+function initGroupedMap() {
+    if (groupedMap) { groupedMap.remove(); groupedMap = null; }
+    const groupedMapEl = document.getElementById('groupedMap');
+    if (!groupedMapEl) return;
+    groupedMap = L.map('groupedMap').setView([40.416, -3.703], 6);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(groupedMap);
+    groupedMarkersLayer = L.layerGroup().addTo(groupedMap);
+    setTimeout(() => { groupedMap.invalidateSize(); }, 1000);
+}
+
+function updateGroupedSensorPhoto(sensor) {
+    const img = document.getElementById('groupedSensorPhoto');
+    const txt = document.getElementById('groupedNoPhotoText');
+    const link = document.getElementById('groupedLinkGoogleMaps');
+    if (!img || !txt || !link) return;
+
+    const foto = sensor?.foto_path;
+    const lat = parseFloat(String(sensor?.latitud ?? '').replace(',', '.'));
+    const lon = parseFloat(String(sensor?.longitud ?? '').replace(',', '.'));
+
+    if (foto && foto !== 'null') {
+        img.src = `static/img/${foto}`;
+        img.style.display = 'block';
+        txt.style.display = 'none';
+    } else {
+        img.style.display = 'none';
+        txt.style.display = 'block';
+        txt.textContent = sensor ? `Sin foto para ${sensor.nombre}` : 'Seleccione un sensor en el mapa';
+    }
+
+    if (sensor && Number.isFinite(lat) && Number.isFinite(lon)) {
+        link.href = `https://www.google.com/maps?q=${lat},${lon}`;
+        link.style.display = 'inline-block';
+    } else {
+        link.style.display = 'none';
+    }
+}
+
+function updateGroupedMapMarkers() {
+    if (!groupedMap || !groupedMarkersLayer) return;
+    groupedMarkersLayer.clearLayers();
+
+    const sensors = getSensorsByActiveType();
+    const boundsPoints = [];
+
+    sensors.forEach(sensor => {
+        const lat = parseFloat(String(sensor.latitud ?? '').replace(',', '.'));
+        const lon = parseFloat(String(sensor.longitud ?? '').replace(',', '.'));
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+        const marker = L.circleMarker([lat, lon], {
+            radius: 8,
+            color: '#0ea5e9',
+            fillColor: '#38bdf8',
+            fillOpacity: 0.85
+        });
+        marker.bindPopup(`<b>${sensor.nombre}</b><br>${sensor.lugar || 'Sin ubicación'}`);
+        marker.on('click', () => updateGroupedSensorPhoto(sensor));
+        groupedMarkersLayer.addLayer(marker);
+        boundsPoints.push([lat, lon]);
+    });
+
+    if (boundsPoints.length > 0) {
+        groupedMap.fitBounds(boundsPoints, { padding: [30, 30], maxZoom: 16 });
+        const firstWithCoords = sensors.find(s => {
+            const la = parseFloat(String(s.latitud ?? '').replace(',', '.'));
+            const lo = parseFloat(String(s.longitud ?? '').replace(',', '.'));
+            return Number.isFinite(la) && Number.isFinite(lo);
+        });
+        if (firstWithCoords) updateGroupedSensorPhoto(firstWithCoords);
+    } else {
+        groupedMap.setView([40.416, -3.703], 6);
+        updateGroupedSensorPhoto(null);
+    }
 }
 
 async function handleUpload(e) {
