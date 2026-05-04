@@ -1083,14 +1083,21 @@ function updateGroupedSensorPhoto(sensor) {
     const link = document.getElementById('groupedLinkGoogleMaps');
     if (!img || !txt || !link) return;
 
-    const foto = sensor?.foto_path;
+    const fotoDb = sensor?.foto_path;
+    const fotoFallback = sensor?.nombre ? `${sensor.nombre}.png` : null;
+    const foto = (fotoDb && fotoDb !== 'null') ? fotoDb : fotoFallback;
     const lat = parseFloat(String(sensor?.latitud ?? '').replace(',', '.'));
     const lon = parseFloat(String(sensor?.longitud ?? '').replace(',', '.'));
 
-    if (foto && foto !== 'null') {
+    if (foto) {
         img.src = `static/img/${foto}`;
         img.style.display = 'block';
         txt.style.display = 'none';
+        img.onerror = () => {
+            img.style.display = 'none';
+            txt.style.display = 'block';
+            txt.textContent = sensor ? `Sin foto para ${sensor.nombre}` : 'Seleccione un sensor en el mapa';
+        };
     } else {
         img.style.display = 'none';
         txt.style.display = 'block';
