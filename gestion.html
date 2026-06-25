@@ -45,6 +45,20 @@
                         <h3>Importar Nuevos Datos</h3>
                         <form id="gestionUploadForm">
                             <div class="mb-3">
+                                <label class="form-label fw-bold">Modo de carga</label>
+                                <select id="gestionUploadMode" class="form-select">
+                                    <option value="inclino">Inclinómetros (individual)</option>
+                                    <option value="grouped">Otros sensores (agrupado)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3" id="gestionGroupedTargetWrap" style="display:none;">
+                                <label class="form-label fw-bold">Grupo a importar</label>
+                                <select id="gestionGroupedTarget" class="form-select">
+                                    <option value="ext_fis">Extensómetros y Fisurómetros</option>
+                                    <option value="acel">Acelerómetros</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label fw-bold">Seleccionar Sensor</label>
                                 <select id="gestionSensorSelect" class="form-select" required>
                                     <option value="">Cargando sensores...</option>
@@ -125,7 +139,9 @@
 
 <script>
     // Lógica Específica de Gestión
-        document.addEventListener('DOMContentLoaded', () => {
+    let gestionSensors = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
         checkAuth();
         loadSensorsForGestion();
         loadHistory();
@@ -133,31 +149,48 @@
         // Botón eliminar lecturas profundidad 0
         document.getElementById('btnDeleteProfCero').addEventListener('click', deleteLecturasProfundidadCero);
 
+        const modeSel = document.getElementById('gestionUploadMode');
+        if (modeSel) {
+            modeSel.addEventListener('change', applyUploadModeUI);
+            applyUploadModeUI();
+        }
+
         // Listener del Formulario
         document.getElementById('gestionUploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const sensorId = document.getElementById('gestionVersionSelect').value;
-            if(!sensorId) return Swal.fire('Error', 'Selecciona una versión', 'warning');
-
+            const mode = document.getElementById('gestionUploadMode')?.value || 'inclino';
             const formData = new FormData(e.target);
+            let sensorId = '';
+
+            if (mode === 'inclino') {
+                sensorId = document.getElementById('gestionVersionSelect').value;
+                if (!sensorId) return Swal.fire('Error', 'Selecciona una versión', 'warning');
+            } else {
+                const groupedTarget = document.getElementById('gestionGroupedTarget')?.value || 'ext_fis';
+                sensorId = resolveGroupedSensorId(groupedTarget);
+                if (!sensorId) {
+                    return Swal.fire('Error', 'No se encontró un sensor válido para ese grupo. Crea/alta sensores primero.', 'warning');
+                }
+            }
+
             formData.append('sensor_id', sensorId);
 
             try {
                 Swal.fire({title: 'Subiendo...', didOpen: () => Swal.showLoading()});
-                const res = await axios.post('api.php?action=upload', formData, { 
-                    headers: {'Content-Type': 'multipart/form-data'} 
-                });
+                const res = await axios.post('api.php?action=upload', formData);
                 
                 if(res.data.success) {
                     Swal.fire('Éxito', res.data.message, 'success');
                     e.target.reset();
+                    applyUploadModeUI();
                     loadHistory(); // Recargar tabla
                 } else {
                     Swal.fire('Error', res.data.message, 'error');
                 }
             } catch(err) {
                 console.error(err);
-                Swal.fire('Error', 'Fallo de conexión', 'error');
+                const apiMsg = err?.response?.data?.message || err?.response?.data?.error || '';
+                Swal.fire('Error', apiMsg || 'Fallo de conexión', 'error');
             }
         });
     });
@@ -174,9 +207,12 @@
     async function loadSensorsForGestion() {
         try {
             const res = await axios.get('api.php?action=get_sensors');
+            gestionSensors = Array.isArray(res.data) ? res.data : [];
             const sel = document.getElementById('gestionSensorSelect');
             sel.innerHTML = '<option value="">-- Selecciona Sensor --</option>';
-            res.data.forEach(s => {
+            gestionSensors
+                .filter(s => isInclinometroType(s?.tipo_sensor))
+                .forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
                 opt.textContent = s.nombre;
@@ -187,7 +223,63 @@
                 const baseId = sel.value;
                 loadVersionsForGestion(baseId);
             });
+            applyUploadModeUI();
         } catch(err) { console.error(err); }
+    }
+
+    function normalizeType(raw) {
+        return String(raw || '').trim().toLowerCase();
+    }
+
+    function isInclinometroType(tipo) {
+        const t = normalizeType(tipo);
+        return t.includes('inclin');
+    }
+
+    function isExtensometroType(tipo) {
+        const t = normalizeType(tipo);
+        return t.includes('extens') || t.includes('long gauge') || t.includes('long-gauge') || t.includes('long_gauge') || t.includes('longgauge');
+    }
+
+    function isFisurometroType(tipo) {
+        const t = normalizeType(tipo);
+        return t.includes('fisur');
+    }
+
+    function isAcelerometroType(tipo) {
+        const t = normalizeType(tipo);
+        return t.includes('aceler');
+    }
+
+    function resolveGroupedSensorId(groupedTarget) {
+        if (!Array.isArray(gestionSensors) || gestionSensors.length === 0) return '';
+        const nameOf = (s) => String(s?.nombre || '').toUpperCase();
+        const predicate = groupedTarget === 'acel'
+            ? (s) => isAcelerometroType(s?.tipo_sensor) || nameOf(s).startsWith('AC_')
+            : (s) =>
+                isExtensometroType(s?.tipo_sensor) ||
+                isFisurometroType(s?.tipo_sensor) ||
+                nameOf(s).startsWith('LG_') ||
+                nameOf(s).startsWith('FIS_');
+        const match = gestionSensors.find(predicate);
+        return match ? String(match.id) : '';
+    }
+
+    function applyUploadModeUI() {
+        const mode = document.getElementById('gestionUploadMode')?.value || 'inclino';
+        const groupedWrap = document.getElementById('gestionGroupedTargetWrap');
+        const sensorSel = document.getElementById('gestionSensorSelect');
+        const versionSel = document.getElementById('gestionVersionSelect');
+        const sensorWrap = sensorSel ? sensorSel.closest('.mb-3') : null;
+        const versionWrap = versionSel ? versionSel.closest('.mb-3') : null;
+
+        const isInclino = mode === 'inclino';
+        if (groupedWrap) groupedWrap.style.display = isInclino ? 'none' : 'block';
+        if (sensorWrap) sensorWrap.style.display = isInclino ? 'block' : 'none';
+        if (versionWrap) versionWrap.style.display = isInclino ? 'block' : 'none';
+
+        if (sensorSel) sensorSel.required = isInclino;
+        if (versionSel) versionSel.required = isInclino;
     }
 
     async function loadVersionsForGestion(baseId) {

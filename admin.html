@@ -226,9 +226,7 @@
             
             try {
                 Swal.showLoading();
-                const res = await axios.post('api.php?action=add_sensor', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                const res = await axios.post('api.php?action=add_sensor', formData);
                 
                 if (res.data.success) {
                     Swal.fire('Guardado', res.data.message, 'success');

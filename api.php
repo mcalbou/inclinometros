@@ -31,6 +31,27 @@ function sensoresHasColumn(PDO $pdo, string $column): bool {
     return $cache[$column];
 }
 
+function normalizeSensorName(string $name): string {
+    $name = trim($name);
+    $name = str_replace(['-', '/', ' '], '_', $name);
+    $name = preg_replace('/_+/', '_', $name);
+    $name = preg_replace('/_(microstrain|mm|m?s2|m_s2|mps2)$/i', '', $name);
+    $name = preg_replace('/[^A-Za-z0-9_]/', '', $name);
+    $name = trim($name, '_');
+    return strtoupper((string)$name);
+}
+
+function iniSizeToBytes(string $val): int {
+    $val = trim($val);
+    if ($val === '') return 0;
+    $num = (float)$val;
+    $unit = strtolower(substr($val, -1));
+    if ($unit === 'g') return (int)($num * 1024 * 1024 * 1024);
+    if ($unit === 'm') return (int)($num * 1024 * 1024);
+    if ($unit === 'k') return (int)($num * 1024);
+    return (int)$num;
+}
+
 // ==========================================
 // 1. ACCIONES PÚBLICAS (LOGIN)
 // ==========================================
@@ -75,6 +96,84 @@ if ($action === 'logout') {
     exit;
 }
 
+// Imagen pública para <img>, sin requerir sesión activa.
+if ($action === 'sensor_image') {
+    $rawName = (string) ($_GET['name'] ?? '');
+    $rawName = urldecode(trim($rawName));
+    $rawName = preg_split('/[?#]/', $rawName)[0] ?? '';
+    $name = basename($rawName);
+    $imagesDir = __DIR__ . '/static/img';
+    $filePath = $imagesDir . '/' . $name;
+
+    if ($name === '') {
+        http_response_code(404);
+        exit;
+    }
+
+    // Fallback robusto: busca sin distinguir mayúsculas/minúsculas
+    // y permite que el nombre venga sin extensión.
+    if (!is_file($filePath)) {
+        $targetLower = strtolower($name);
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        $base = strtolower(pathinfo($name, PATHINFO_FILENAME));
+        $allowedExt = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
+
+        $matches = glob($imagesDir . '/*');
+        foreach ($matches as $candidate) {
+            if (!is_file($candidate)) continue;
+            $candidateName = basename($candidate);
+            $candidateLower = strtolower($candidateName);
+            $candidateExt = strtolower(pathinfo($candidateName, PATHINFO_EXTENSION));
+            $candidateBase = strtolower(pathinfo($candidateName, PATHINFO_FILENAME));
+
+            $sameName = ($candidateLower === $targetLower);
+            $sameBaseWithAllowedExt = ($ext === '' && $candidateBase === $base && in_array($candidateExt, $allowedExt, true));
+
+            if ($sameName || $sameBaseWithAllowedExt) {
+                $filePath = $candidate;
+                break;
+            }
+        }
+    }
+
+    if (!is_file($filePath)) {
+        http_response_code(404);
+        exit;
+    }
+
+    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+    $allowedMimesByExt = [
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'bmp' => 'image/bmp',
+        'svg' => 'image/svg+xml'
+    ];
+
+    $mimeFromExt = $allowedMimesByExt[$extension] ?? '';
+    $detectedMime = function_exists('mime_content_type') ? (mime_content_type($filePath) ?: '') : '';
+    $mime = (strpos($detectedMime, 'image/') === 0) ? $detectedMime : $mimeFromExt;
+    if (strpos($mime, 'image/') !== 0) {
+        http_response_code(415);
+        exit;
+    }
+
+    // Evitar salida previa (warnings/notices/BOM) que corrompa la imagen.
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    header_remove('Content-Type');
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($filePath));
+    header('Cache-Control: public, max-age=300');
+    header('X-Content-Type-Options: nosniff');
+    readfile($filePath);
+    exit;
+}
+
 // ==========================================
 // 2. MIDDLEWARE DE SEGURIDAD (BARRERA)
 // ==========================================
@@ -89,16 +188,37 @@ if (!isset($_SESSION['user_id'])) {
 // 3. ACCIONES PROTEGIDAS
 // ==========================================
 
+if ($action === 'php_limits') {
+    $uploadMax = (string)ini_get('upload_max_filesize');
+    $postMax = (string)ini_get('post_max_size');
+    echo json_encode([
+        'success' => true,
+        'upload_max_filesize' => $uploadMax,
+        'post_max_size' => $postMax,
+        'upload_max_filesize_bytes' => iniSizeToBytes($uploadMax),
+        'post_max_size_bytes' => iniSizeToBytes($postMax),
+        'max_execution_time' => (string)ini_get('max_execution_time'),
+        'max_input_time' => (string)ini_get('max_input_time')
+    ]);
+    exit;
+}
+
 // A. OBTENER SENSORES (SOLO LOS ACTUALES PARA EL DESPLEGABLE)
 if ($action === 'get_sensors') {
     $hasTipoSensor = sensoresHasColumn($pdo, 'tipo_sensor');
-    $tipoSelect = $hasTipoSensor ? 'tipo_sensor' : "'Inclinómetro' AS tipo_sensor";
+    $tipoSelect = $hasTipoSensor ? 's.tipo_sensor' : "'Inclinómetro' AS tipo_sensor";
 
-    // Usamos DISTINCT ON en Postgres para sacar solo la última versión de cada nombre
-    // Ordenamos por nombre y luego por versión descendente (la más alta primero)
-    $sql = "SELECT DISTINCT ON (nombre) id, nombre, version, latitud, longitud, nf, lugar, foto_path, $tipoSelect
-            FROM sensores 
-            ORDER BY nombre, version DESC";
+    // Usamos DISTINCT ON en Postgres para sacar solo la última versión de cada nombre.
+    // La foto se toma de cualquier versión del sensor (COALESCE busca la primera no nula).
+    $sql = "SELECT DISTINCT ON (s.nombre) s.id, s.nombre, s.version, s.latitud, s.longitud, s.nf, s.lugar,
+                COALESCE(s.foto_path, (
+                    SELECT foto_path FROM sensores s2
+                    WHERE s2.nombre = s.nombre AND s2.foto_path IS NOT NULL
+                    ORDER BY s2.version DESC LIMIT 1
+                )) AS foto_path,
+                $tipoSelect
+            FROM sensores s
+            ORDER BY s.nombre, s.version DESC";
             
     $stmt = $pdo->query($sql);
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -134,12 +254,47 @@ if ($action === 'get_versions') {
 
 // B. OBTENER DATOS (Todos los roles pueden ver)
 if ($action === 'get_data') {
-    $sensor_id = $_GET['id'] ?? 0;
-    $sql = "SELECT to_char(fecha, 'YYYY-MM-DD') as fecha_str, profundidad, valor_a, valor_b 
-            FROM lecturas WHERE sensor_id = :sid ORDER BY fecha ASC, profundidad ASC";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute(['sid' => $sensor_id]);
-    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    // Subir el límite de memoria para sensores con mucho histórico (acelerómetros, etc.)
+    @ini_set('memory_limit', '512M');
+    @set_time_limit(120);
+
+    $sensor_id = (int) ($_GET['id'] ?? 0);
+    $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 0;
+    if ($limit < 0) $limit = 0;
+    // Tope de seguridad: nunca devolver más de 200.000 filas en una sola llamada
+    if ($limit === 0 || $limit > 200000) $limit = 200000;
+
+    try {
+        if ($sensor_id <= 0) {
+            echo json_encode([]);
+            exit;
+        }
+
+        // Estrategia: si hay LIMIT, traer las últimas N filas (más recientes) ordenadas DESC,
+        // y luego invertir para devolverlas en orden ASC tal y como espera el front.
+        $sql = "SELECT to_char(fecha, 'YYYY-MM-DD') as fecha_str,
+                       to_char(fecha, 'YYYY-MM-DD HH24:MI:SS.US') as fecha_full,
+                       profundidad, valor_a, valor_b
+                FROM lecturas
+                WHERE sensor_id = :sid
+                ORDER BY fecha DESC, profundidad ASC
+                LIMIT :lim";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':sid', $sensor_id, PDO::PARAM_INT);
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Devolver en orden cronológico ascendente (gráficas esperan ASC).
+        $rows = array_reverse($rows);
+        echo json_encode($rows);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode([
+            'error' => 'get_data failed',
+            'message' => $e->getMessage(),
+            'sensor_id' => $sensor_id
+        ]);
+    }
     exit;
 }
 
@@ -148,6 +303,10 @@ if ($action === 'get_data') {
 // ==========================================
 if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
+    if (!isset($_SESSION['rol'])) {
+        echo json_encode(['success' => false, 'message' => 'No autorizado']); exit;
+    }
+
     if ($_SESSION['rol'] === 'cliente') {
         echo json_encode(['success' => false, 'message' => 'Permisos insuficientes.']); exit;
     }
@@ -159,58 +318,44 @@ if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
+        $uploadError = (int)($_FILES['file']['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($uploadError !== UPLOAD_ERR_OK) {
+            $uploadErrors = [
+                UPLOAD_ERR_INI_SIZE => 'El archivo supera el tamaño máximo permitido por el servidor.',
+                UPLOAD_ERR_FORM_SIZE => 'El archivo supera el tamaño máximo permitido por el formulario.',
+                UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente.',
+                UPLOAD_ERR_NO_FILE => 'No se recibió ningún archivo.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Falta carpeta temporal en el servidor.',
+                UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir el archivo en disco.',
+                UPLOAD_ERR_EXTENSION => 'Una extensión de PHP bloqueó la subida.'
+            ];
+            $msg = $uploadErrors[$uploadError] ?? ('Error de subida de archivo (código ' . $uploadError . ').');
+            if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+                $msg .= ' Límite actual: upload_max_filesize=' . ini_get('upload_max_filesize')
+                    . ', post_max_size=' . ini_get('post_max_size') . '.';
+            }
+            throw new Exception($msg);
+        }
+
         $fileName = $_FILES['file']['name']; // Nombre original del archivo
         $filePath = $_FILES['file']['tmp_name'];
+        if (!is_string($filePath) || $filePath === '' || !file_exists($filePath)) {
+            throw new Exception('No se encontró el archivo temporal subido.');
+        }
+
         $content = file_get_contents($filePath);
+        if ($content === false) {
+            throw new Exception('No se pudo leer el contenido del archivo subido.');
+        }
         $lines = preg_split('/\r\n|\r|\n/', $content);
-        
-        // ... (Tu lógica de parsing de cabeceras se mantiene IGUAL) ...
-        $headerIndices = [];
-        foreach ($lines as $i => $line) {
-            $clean = trim($line);
-            if (stripos($clean, 'depth;') === 0 && preg_match('/\d{2}\/\d{2}\/\d{4}/', $clean)) {
-                $headerIndices[] = $i;
-            }
-        }
-        if (empty($headerIndices)) throw new Exception("No se encontraron cabeceras válidas.");
-
-        $idx_a = $headerIndices[0];
-        $idx_b = count($headerIndices) > 1 ? $headerIndices[1] : null;
-        $end_a = $idx_b ? ($idx_b - 2) : count($lines);
-        $mergedData = [];
-
-        // ... (Tu función processBlock se mantiene IGUAL) ...
-        function processBlock($lines, $start, $end, $axis, &$mergedData) {
-            $headerLine = trim($lines[$start]);
-            $headers = explode(';', $headerLine);
-            $dateMap = [];
-            foreach ($headers as $k => $col) {
-                if (strtolower($col) !== 'depth' && preg_match('/\d{2}\/\d{2}\/\d{4}/', $col)) {
-                    $dt = DateTime::createFromFormat('d/m/Y', $col);
-                    if ($dt) $dateMap[$k] = $dt->format('Y-m-d');
-                }
-            }
-            for ($i = $start + 1; $i < $end; $i++) {
-                if (!isset($lines[$i])) continue;
-                $row = explode(';', trim($lines[$i]));
-                if (count($row) < 1) continue;
-                $prof = floatval(str_replace(',', '.', $row[0]));
-
-                foreach ($dateMap as $colIdx => $dateStr) {
-                    if (isset($row[$colIdx])) {
-                        $val = floatval(str_replace(',', '.', $row[$colIdx]));
-                        if (!isset($mergedData[$dateStr])) $mergedData[$dateStr] = [];
-                        if (!isset($mergedData[$dateStr]["$prof"])) $mergedData[$dateStr]["$prof"] = ['a'=>0, 'b'=>0];
-                        $mergedData[$dateStr]["$prof"][$axis] = $val;
-                    }
-                }
-            }
+        if (!is_array($lines) || empty($lines)) {
+            throw new Exception('El archivo está vacío o tiene un formato inválido.');
         }
 
-        processBlock($lines, $idx_a, $end_a, 'a', $mergedData);
-        if ($idx_b) processBlock($lines, $idx_b, count($lines), 'b', $mergedData);
+        $firstLine = trim($lines[0] ?? '');
+        $firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine); // BOM UTF-8
+        $isTimestampCsv = (stripos($firstLine, 'timestamp,') === 0);
 
-        // --- AQUÍ EMPIEZA EL CAMBIO IMPORTANTE ---
         $pdo->beginTransaction();
 
         // 1. Crear registro en tabla CARGAS
@@ -218,29 +363,218 @@ if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtCarga->execute([$sensor_id, $fileName, $_SESSION['usuario']]);
         $carga_id = $stmtCarga->fetchColumn();
 
-        // 2. Limpiar datos antiguos que coincidan en fecha (para evitar duplicados visuales)
-        // Nota: Esto borra datos viejos de esas fechas, aunque fueran de otra carga. Es necesario para no tener doble dato.
-        $fechas = array_keys($mergedData);
-        if (!empty($fechas)) {
-            $placeholders = implode(',', array_fill(0, count($fechas), '?'));
-            $stmtDel = $pdo->prepare("DELETE FROM lecturas WHERE sensor_id = ? AND fecha IN ($placeholders)");
-            $stmtDel->execute(array_merge([$sensor_id], $fechas));
-        }
-
-        // 3. Insertar nuevos datos vinculados a la CARGA
-        $stmtIns = $pdo->prepare("INSERT INTO lecturas (sensor_id, carga_id, fecha, profundidad, valor_a, valor_b) VALUES (?, ?, ?, ?, ?, ?)");
         $count = 0;
-        foreach ($mergedData as $fecha => $profs) {
-            foreach ($profs as $profKey => $vals) {
-                $stmtIns->execute([$sensor_id, $carga_id, $fecha, $profKey, $vals['a'], $vals['b']]);
-                $count++;
+        $attempted = 0;
+        $importMap = null;
+
+        if ($isTimestampCsv) {
+            $header = str_getcsv($firstLine);
+            if (count($header) < 2 || strtolower(trim((string)$header[0])) !== 'timestamp') {
+                throw new Exception("Formato CSV timestamp inválido.");
+            }
+
+            // Nombre de columna CSV -> sensor base + eje de guardado.
+            // valor_a: deformación/desplazamiento/aceleración
+            // valor_b: temperatura asociada (solo extensómetros, columnas T_*_C)
+            $headerToSensor = [];
+            for ($i = 1; $i < count($header); $i++) {
+                $raw = trim((string)$header[$i]);
+                if ($raw === '') continue;
+
+                $normalized = strtoupper($raw);
+                $field = 'a';
+                if (preg_match('/^T_(P[0-9]+[NSEO])_C$/i', $normalized, $mTemp)) {
+                    // T_P5S_C -> LG_P5S (temperatura asociada al extensómetro)
+                    $sensorName = normalizeSensorName('LG_' . strtoupper($mTemp[1]));
+                    $field = 'b';
+                } else {
+                    $sensorName = normalizeSensorName($raw);
+                }
+
+                if ($sensorName !== '') {
+                    $headerToSensor[$i] = [
+                        'sensor' => $sensorName,
+                        'field' => $field,
+                        'csv_col' => $raw
+                    ];
+                }
+            }
+
+            if (empty($headerToSensor)) {
+                throw new Exception("No se detectaron columnas de sensores en el CSV.");
+            }
+
+            // Resolver sensor_id por nombre usando la versión actual.
+            $stmtSensors = $pdo->query("SELECT DISTINCT ON (nombre) id, nombre FROM sensores ORDER BY nombre, version DESC");
+            $sensorIdByName = [];
+            foreach ($stmtSensors->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                $sensorIdByName[normalizeSensorName((string)$s['nombre'])] = (int)$s['id'];
+            }
+
+            $targetByColumn = [];
+            $missing = [];
+            foreach ($headerToSensor as $colIdx => $mapInfo) {
+                $sensorName = $mapInfo['sensor'];
+                if (isset($sensorIdByName[$sensorName])) {
+                    $targetByColumn[$colIdx] = [
+                        'sensor_id' => $sensorIdByName[$sensorName],
+                        'field' => $mapInfo['field']
+                    ];
+                } else {
+                    $missing[$sensorName] = true;
+                }
+            }
+
+            if (empty($targetByColumn)) {
+                $missNames = implode(', ', array_keys($missing));
+                throw new Exception("No se encontró ningún sensor en BD para las columnas del archivo. Faltan: $missNames");
+            }
+
+            $mappedColumns = [];
+            foreach ($targetByColumn as $colIdx => $mapInfo) {
+                $src = $headerToSensor[$colIdx] ?? null;
+                $srcCsvCol = is_array($src) ? ($src['csv_col'] ?? ('col_' . $colIdx)) : ('col_' . $colIdx);
+                $srcSensor = is_array($src) ? ($src['sensor'] ?? '') : '';
+                $mappedColumns[] = [
+                    'csv_col' => $srcCsvCol,
+                    'sensor' => $srcSensor,
+                    'sensor_id' => (int)$mapInfo['sensor_id'],
+                    'field' => $mapInfo['field'] === 'b' ? 'valor_b' : 'valor_a'
+                ];
+            }
+            $missingColumns = [];
+            foreach ($missing as $missName => $_true) {
+                $missingColumns[] = $missName;
+            }
+            $importMap = [
+                'mapped_columns' => $mappedColumns,
+                'missing_columns' => $missingColumns
+            ];
+
+            $timestampsBySensor = [];
+            $rowsBySensorTs = [];
+
+            for ($lineIdx = 1; $lineIdx < count($lines); $lineIdx++) {
+                $line = trim((string)$lines[$lineIdx]);
+                if ($line === '') continue;
+                $row = str_getcsv($line);
+                $rawTs = trim((string)($row[0] ?? ''));
+                if ($rawTs === '') continue;
+
+                $tsNorm = $rawTs;
+                if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.(\d{1,6})$/', $rawTs, $mTs)) {
+                    $frac = str_pad($mTs[1], 6, '0', STR_PAD_RIGHT);
+                    $tsNorm = preg_replace('/\.\d{1,6}$/', '.' . $frac, $rawTs);
+                }
+
+                $dt = DateTime::createFromFormat('Y-m-d H:i:s.u', $tsNorm)
+                    ?: DateTime::createFromFormat('Y-m-d H:i:s', $rawTs);
+                if (!$dt) continue;
+                $fechaDb = $dt->format('Y-m-d H:i:s.u');
+
+                foreach ($targetByColumn as $colIdx => $mapInfo) {
+                    $rawVal = trim((string)($row[$colIdx] ?? ''));
+                    if ($rawVal === '') continue;
+                    $val = floatval(str_replace(',', '.', $rawVal));
+                    $targetSensorId = (int)$mapInfo['sensor_id'];
+                    $field = $mapInfo['field'] === 'b' ? 'b' : 'a';
+
+                    if (!isset($rowsBySensorTs[$targetSensorId])) $rowsBySensorTs[$targetSensorId] = [];
+                    if (!isset($rowsBySensorTs[$targetSensorId][$fechaDb])) {
+                        $rowsBySensorTs[$targetSensorId][$fechaDb] = ['a' => 0, 'b' => 0];
+                    }
+                    $rowsBySensorTs[$targetSensorId][$fechaDb][$field] = $val;
+
+                    if (!isset($timestampsBySensor[$targetSensorId])) $timestampsBySensor[$targetSensorId] = [];
+                    $timestampsBySensor[$targetSensorId][] = $fechaDb;
+                }
+            }
+
+            if (empty($rowsBySensorTs)) {
+                throw new Exception("No se encontraron filas válidas para importar.");
+            }
+
+            $stmtIns = $pdo->prepare("
+                INSERT INTO lecturas (sensor_id, carga_id, fecha, profundidad, valor_a, valor_b)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT (sensor_id, fecha, profundidad) DO NOTHING
+            ");
+            foreach ($rowsBySensorTs as $targetSensorId => $rowsByTs) {
+                foreach ($rowsByTs as $fechaDb => $vals) {
+                    $attempted++;
+                    $stmtIns->execute([$targetSensorId, $carga_id, $fechaDb, 0, $vals['a'], $vals['b']]);
+                    $count += $stmtIns->rowCount();
+                }
+            }
+        } else {
+            // Formato histórico de inclinómetros (depth;dd/mm/yyyy;...)
+            $headerIndices = [];
+            foreach ($lines as $i => $line) {
+                $clean = trim($line);
+                if (stripos($clean, 'depth;') === 0 && preg_match('/\d{2}\/\d{2}\/\d{4}/', $clean)) {
+                    $headerIndices[] = $i;
+                }
+            }
+            if (empty($headerIndices)) throw new Exception("No se encontraron cabeceras válidas.");
+
+            $idx_a = $headerIndices[0];
+            $idx_b = count($headerIndices) > 1 ? $headerIndices[1] : null;
+            $end_a = $idx_b ? ($idx_b - 2) : count($lines);
+            $mergedData = [];
+
+            function processBlock($lines, $start, $end, $axis, &$mergedData) {
+                $headerLine = trim($lines[$start]);
+                $headers = explode(';', $headerLine);
+                $dateMap = [];
+                foreach ($headers as $k => $col) {
+                    if (strtolower($col) !== 'depth' && preg_match('/\d{2}\/\d{2}\/\d{4}/', $col)) {
+                        $dt = DateTime::createFromFormat('d/m/Y', $col);
+                        if ($dt) $dateMap[$k] = $dt->format('Y-m-d');
+                    }
+                }
+                for ($i = $start + 1; $i < $end; $i++) {
+                    if (!isset($lines[$i])) continue;
+                    $row = explode(';', trim($lines[$i]));
+                    if (count($row) < 1) continue;
+                    $prof = floatval(str_replace(',', '.', $row[0]));
+
+                    foreach ($dateMap as $colIdx => $dateStr) {
+                        if (isset($row[$colIdx])) {
+                            $val = floatval(str_replace(',', '.', $row[$colIdx]));
+                            if (!isset($mergedData[$dateStr])) $mergedData[$dateStr] = [];
+                            if (!isset($mergedData[$dateStr]["$prof"])) $mergedData[$dateStr]["$prof"] = ['a'=>0, 'b'=>0];
+                            $mergedData[$dateStr]["$prof"][$axis] = $val;
+                        }
+                    }
+                }
+            }
+
+            processBlock($lines, $idx_a, $end_a, 'a', $mergedData);
+            if ($idx_b) processBlock($lines, $idx_b, count($lines), 'b', $mergedData);
+
+            $stmtIns = $pdo->prepare("
+                INSERT INTO lecturas (sensor_id, carga_id, fecha, profundidad, valor_a, valor_b)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT (sensor_id, fecha, profundidad) DO NOTHING
+            ");
+            foreach ($mergedData as $fecha => $profs) {
+                foreach ($profs as $profKey => $vals) {
+                    $attempted++;
+                    $stmtIns->execute([$sensor_id, $carga_id, $fecha, $profKey, $vals['a'], $vals['b']]);
+                    $count += $stmtIns->rowCount();
+                }
             }
         }
 
         $pdo->commit();
-        echo json_encode(['success' => true, 'message' => "Archivo guardado. $count registros procesados."]);
+        $skipped = max(0, $attempted - $count);
+        echo json_encode([
+            'success' => true,
+            'message' => "Archivo guardado. Insertados: $count. Omitidos por duplicado: $skipped. Total leídos: $attempted.",
+            'import_map' => $importMap
+        ]);
 
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
@@ -358,10 +692,18 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // 2. Recoger datos
+    if (empty($_POST) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No se recibieron los datos del formulario. Si adjuntaste una foto, comprueba el límite de subida del servidor.'
+        ]);
+        exit;
+    }
+
     $createVersion = ($_POST['create_version'] ?? '0') === '1';
     $baseSensorId = $_POST['base_sensor_id'] ?? null;
 
-    $nombre = $_POST['nombre'] ?? '';
+    $nombre = trim((string)($_POST['nombre'] ?? ''));
     $lat = $_POST['latitud'] ?? 0;
     $lon = $_POST['longitud'] ?? 0;
     $nf = $_POST['nf'] ?? 0;
@@ -399,7 +741,7 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             $hasTipoSensor = sensoresHasColumn($pdo, 'tipo_sensor');
-            $baseSelect = $hasTipoSensor ? 'nombre, latitud, longitud, nf, lugar, tipo_sensor' : "nombre, latitud, longitud, nf, lugar, 'Inclinómetro' AS tipo_sensor";
+            $baseSelect = $hasTipoSensor ? 'nombre, latitud, longitud, nf, lugar, foto_path, tipo_sensor' : "nombre, latitud, longitud, nf, lugar, foto_path, 'Inclinómetro' AS tipo_sensor";
             $stmtBase = $pdo->prepare("SELECT $baseSelect FROM sensores WHERE id = ?");
             $stmtBase->execute([$baseSensorId]);
             $base = $stmtBase->fetch(PDO::FETCH_ASSOC);
@@ -414,6 +756,10 @@ if ($action === 'add_sensor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $lugar = $base['lugar'] ?: 'Canal';
             $sensorType = trim($base['tipo_sensor'] ?? 'Inclinómetro');
             if ($sensorType === '') $sensorType = 'Inclinómetro';
+            // Inherit photo from base sensor if no new photo was uploaded
+            if ($fotoFilename === null && !empty($base['foto_path'])) {
+                $fotoFilename = $base['foto_path'];
+            }
         } else {
             // Evitar duplicar nombres si no es nueva versión
             $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM sensores WHERE nombre = ?");
@@ -615,14 +961,20 @@ if ($action === 'delete_lecturas_profundidad_cero' && $_SERVER['REQUEST_METHOD']
     }
 
     try {
-        $stmt = $pdo->prepare("DELETE FROM lecturas WHERE profundidad = 0");
+        $stmt = $pdo->prepare("
+            DELETE FROM lecturas l
+            USING sensores s
+            WHERE l.sensor_id = s.id
+              AND l.profundidad = 0
+              AND LOWER(COALESCE(s.tipo_sensor, '')) LIKE '%inclin%'
+        ");
         $stmt->execute();
         $deleted = $stmt->rowCount();
         echo json_encode([
             'success' => true,
             'message' => $deleted > 0
-                ? "Se han eliminado $deleted registro(s) con profundidad 0."
-                : 'No había registros con profundidad 0.',
+                ? "Se han eliminado $deleted registro(s) de inclinómetros con profundidad 0."
+                : 'No había registros de inclinómetros con profundidad 0.',
             'deleted' => $deleted
         ]);
     } catch (PDOException $e) {
